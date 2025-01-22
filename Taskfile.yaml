@@ -7,7 +7,7 @@ tasks:
 
   up:
     cmds:
-      - docker-compose up
+      - docker-compose up -d
 
   down:
     cmds:
