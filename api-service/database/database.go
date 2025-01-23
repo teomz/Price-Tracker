@@ -14,7 +14,7 @@ type DatabaseController struct {
 }
 
 func createDBInstance() (*DatabaseController, error) {
-	err := godotenv.Load()
+	err := godotenv.Load("../.env")
 	if err != nil {
 		fmt.Println("Error loading .env file: %v", err)
 	}
@@ -72,7 +72,7 @@ func Initialize() error {
 
 	fmt.Println("Running sql query ...")
 
-	sqlFile := "./component/database/sql/up_v1.sql"
+	sqlFile := "./database/sql/up_v1.sql"
 	query, err := ioutil.ReadFile(sqlFile)
 
 	if err != nil {

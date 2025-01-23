@@ -2,13 +2,89 @@ version: '3'
 
 tasks:
   build:
+    desc: "Build all Docker images and start the services"
     cmds:
-      - go build -v -i main.go
+      - docker-compose up --build
 
   up:
+    desc: "Start the services without rebuilding images"
     cmds:
       - docker-compose up -d
 
   down:
+    desc: "Restart all Docker containers"
     cmds:
       - docker-compose down
+
+
+  swag:
+
+      cmds:
+        - export GOPATH=$HOME/go
+        - export PATH=$PATH:$GOPATH/bin
+        - source ~/.bashrc
+        - go install github.com/swaggo/swag/cmd/swag@latest
+
+
+
+
+  # # Task to view logs for a specific service
+  # logs:
+  #   desc: "View logs for a specific service"
+  #   params:
+  #     - name
+  #   cmds:
+  #     - docker-compose logs -f {{.name}}
+  #   silent: false
+
+  # # Task to build the frontend Docker image
+  # build-frontend:
+  #   desc: "Build the Docker image for the frontend (React with TypeScript)"
+  #   cmds:
+  #     - docker build -t price-tracker-frontend ./frontend
+  #   silent: true
+
+  # # Task to build the Go API Docker image
+  # build-api:
+  #   desc: "Build the Docker image for the Go API service"
+  #   cmds:
+  #     - docker build -t price-tracker-api ./api-service
+  #   silent: true
+
+  # # Task to build the Airflow Docker image
+  # build-airflow:
+  #   desc: "Build the Docker image for the Airflow service"
+  #   cmds:
+  #     - docker build -t price-tracker-airflow ./airflow
+  #   silent: true
+
+  # # Task to build the DBT Docker image
+  # build-dbt:
+  #   desc: "Build the Docker image for the DBT service"
+  #   cmds:
+  #     - docker build -t price-tracker-dbt ./dbt
+  #   silent: true
+
+  # # Task to run a custom Airflow DAG (if applicable)
+  # run-airflow-dag:
+  #   desc: "Run an Airflow DAG"
+  #   params:
+  #     - dag_id
+  #   cmds:
+  #     - docker-compose exec airflow airflow dags trigger {{.dag_id}}
+  #   silent: false
+
+  # # Task to run migrations for the PostgreSQL database
+  # migrate-db:
+  #   desc: "Run migrations on the PostgreSQL database"
+  #   cmds:
+  #     - docker-compose exec api-service go run migrate.go
+  #   silent: false
+
+  # # Task to clean up orphaned Docker containers and volumes
+  # clean:
+  #   desc: "Clean up orphaned containers and volumes"
+  #   cmds:
+  #     - docker system prune -f
+  #     - docker volume prune -f
+  #   silent: true

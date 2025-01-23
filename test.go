@@ -1,14 +1,14 @@
 package main
 
 import (
-	"github.com/teomz/Price-Tracker/component/scraper"
+	"github.com/teomz/Price-Tracker/api-service/scraper"
 	"fmt"
 )
 
 func main() {
 
-	source := "https://leagueofcomicgeeks.com/comic/4511150/daredevil-by-chip-zdarsky-omnibus-vol-2-hc"
-	product := scraper.ScrapeComicGeek(source)
-	fmt.Printf("Product Name: %s, Date: %s, Publisher: %s\n", product.Name, product.DateCreated, product.Publisher)
+	source := "https://www.instocktrades.com/products/jul240881/daredevil-by-bendis-maleev-omnibus-hc-vol-02-new-ptg"
+	product := scraper.ScrapeIST(source)
+	fmt.Printf("Product details: %s\n", product)
 
 }
