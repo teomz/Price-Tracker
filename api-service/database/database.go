@@ -3,8 +3,9 @@ package database
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
-	"io/ioutil"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -14,11 +15,17 @@ type DatabaseController struct {
 }
 
 func createDBInstance() (*DatabaseController, error) {
-	err := godotenv.Load("../.env")
-	if err != nil {
-		fmt.Println("Error loading .env file: %v", err)
-	}
 
+	envFile := "../.env"
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		log.Printf("No .env file found at: %s\n", envFile)
+	} else {
+		// Load the .env file
+		err := godotenv.Load(envFile)
+		if err != nil {
+			log.Printf("Error loading .env file: %v", err)
+		}
+	}
 	fmt.Println("Connecting to Postgres ... ")
 
 	postgresUser := os.Getenv("POSTGRES_USER")
@@ -30,8 +37,6 @@ func createDBInstance() (*DatabaseController, error) {
 	fmt.Println(postgresDB)
 
 	conString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", postgresUser, postgresPassword, hostDB, postgresPort, postgresDB)
-
-
 
 	pool, err := pgxpool.New(context.Background(), conString)
 	if err != nil {
@@ -73,7 +78,7 @@ func Initialize() error {
 	fmt.Println("Running sql query ...")
 
 	sqlFile := "./database/sql/up_v1.sql"
-	query, err := ioutil.ReadFile(sqlFile)
+	query, err := os.ReadFile(sqlFile)
 
 	if err != nil {
 		return err

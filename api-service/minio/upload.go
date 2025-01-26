@@ -1,76 +1,102 @@
 package minio
 
 import (
-    // "context"
-    // "github.com/minio/minio-go/v7"
-    // "github.com/minio/minio-go/v7/pkg/credentials"
-    "github.com/gin-gonic/gin"
-    "net/http"
-    // "os"
+	"context"
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	"github.com/minio/minio-go/v7"
+	"github.com/teomz/Price-Tracker/api-service/models"
+	"github.com/teomz/Price-Tracker/api-service/utilities"
 )
+
 // @BasePath /api/v1
+
 // uploadFile godoc
 // @Summary Upload a file to MinIO
 // @Schemes
 // @Description Upload a file to MinIO storage
-// @Accept  multipart/form-data
+// @Tags minio
+// @Accept png,jpeg
 // @Produce json
-// @Param file formData file true "File to upload"
-// @Success 200 {string} url_of_the_uploaded_file
-// @Router /minio/upload [post]
+// @Param TaskUser  query string true "User calling api"
+// @Param file formData file true "File to be uploaded"
+// @Param BucketNameKey query string true "The name of the minio bucket"
+// @Param extension formData string true "File extension (e.g., png, jpeg)"
+// @Success 200 {object} models.SuccessResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /minio/uploadImage [post]
+func uploadImage(g *gin.Context) {
 
-// @BasePath /api/v1
+	envFile := "../.env"
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		log.Printf("No .env file found at: %s\n", envFile)
+	} else {
+		// Load the .env file
+		err := godotenv.Load(envFile)
+		if err != nil {
+			log.Printf("Error loading .env file: %v", err)
+		}
+	}
 
-// func uploadFile(c *gin.Context) {
-//     // file, header, err := c.Request.FormFile("file")
-//     // if err != nil {
-//     //     c.JSON(http.StatusBadRequest, "Failed to upload file")
-//     //     return
-//     // }
-//     // defer file.Close()
+	extList := []string{"png", "jpeg"}
+	mimeList := []string{"image/png", "image/jpeg"}
+	if _, err := utilities.Validate_File(g, extList, mimeList); err != nil {
+		g.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Action: "UploadImage",
+			Error:  err.Error(),
+		})
+		return
+	}
 
-//     // objectName := header.Filename
-//     // bucketName := "images" // S3 Bucket
+	userID := g.DefaultQuery("TaskUser", "default_user")
+	if userID != os.Getenv("AIRFLOW_USER") {
+		g.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Action: "UploadImage",
+			Error:  "Wrong User",
+		})
+		return
+	}
 
-//     // // Initialize MinIO client
-//     // minioClient, err := minio.New(
-//     //     os.Getenv("MINIO_ENDPOINT"),
-//     //     &minio.Options{
-//     //         Creds:  credentials.NewStaticV4(os.Getenv("MINIO_ACCESS_KEY"), os.Getenv("MINIO_SECRET_KEY"), ""),
-//     //         Secure: false, // Set this to true if you're using HTTPS
-//     //     },
-//     // )
-//     // if err != nil {
-//     //     c.JSON(http.StatusInternalServerError, "Failed to connect to MinIO")
-//     //     return
-//     // }
+	minioClient, err := createMinioInstance()
 
-//     // // Upload the file to MinIO
-//     // _, err = minioClient.PutObject(context.Background(), bucketName, objectName, file, -1, minio.PutObjectOptions{})
-//     // if err != nil {
-//     //     c.JSON(http.StatusInternalServerError, "Failed to upload file to MinIO")
-//     //     return
-//     // }
+	if err != nil {
+		g.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Action: "UploadImage",
+			Error:  err.Error(),
+		})
+		return
+	}
 
-//     // // Generate the file URL
-//     // fileURL := "http://" + os.Getenv("MINIO_ENDPOINT") + "/images/" + objectName
-//     // // If using HTTPS, you can modify the URL like this:
-//     // // fileURL := "https://" + os.Getenv("MINIO_ENDPOINT") + "/images/" + objectName
+	fileHeader, fileContent, err := utilities.GetFile(g)
+	defer fileContent.Close()
+	if err != nil {
+		g.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Action: "UploadImage",
+			Error:  err.Error(),
+		})
+		return
+	}
+	bucketName := g.DefaultQuery("BucketNameKey", "defaultBucket")
+	bucketname := bucketName
+	objectname := fileHeader.Filename
 
-//     c.JSON(http.StatusOK, "Testing")
-// }
+	_, err = minioClient.PutObject(context.Background(), bucketname, objectname, fileContent, fileHeader.Size, minio.PutObjectOptions{ContentType: "application/octet-stream"})
+	if err != nil {
+		g.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Action: "UploadImage",
+			Error:  err.Error(),
+		})
+		return
+	}
 
-// @BasePath /api/v1
-
-// PingExample godoc
-// @Summary ping example
-// @Schemes
-// @Description do ping
-// @Tags example
-// @Accept json
-// @Produce json
-// @Success 200 {string} Helloworld
-// @Router /example/helloworld [get]
-func Helloworld(g *gin.Context)  {
-	g.JSON(http.StatusOK,"helloworld")
- }
+	g.JSON(http.StatusOK, models.SuccessResponse{
+		Action:     "UploadImage Successful",
+		BucketName: bucketname,
+		ObjectName: objectname,
+	})
+}

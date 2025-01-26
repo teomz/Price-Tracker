@@ -1,19 +1,145 @@
+definitions:
+  models.ErrorResponse:
+    properties:
+      action:
+        type: string
+      error:
+        type: string
+    type: object
+  models.SuccessResponse:
+    properties:
+      action:
+        type: string
+      bucketname:
+        type: string
+      objectname:
+        type: string
+    type: object
 info:
   contact: {}
 paths:
-  /example/helloworld:
-    get:
+  /minio/deleteImage:
+    delete:
       consumes:
       - application/json
-      description: do ping
+      description: Get a file from MinIO storage
+      parameters:
+      - description: User calling api
+        in: query
+        name: TaskUser
+        required: true
+        type: string
+      - description: The name of the minio bucket
+        in: query
+        name: BucketNameKey
+        required: true
+        type: string
+      - description: The name of the object in minio
+        in: query
+        name: ObjectNameKey
+        required: true
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            type: string
-      summary: ping example
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get a file from MinIO
       tags:
-      - example
+      - minio
+  /minio/getImage:
+    get:
+      consumes:
+      - application/json
+      description: Get a file from MinIO storage
+      parameters:
+      - description: User calling api
+        in: query
+        name: TaskUser
+        required: true
+        type: string
+      - description: The name of the minio bucket
+        in: query
+        name: BucketNameKey
+        required: true
+        type: string
+      - description: The name of the object in minio
+        in: query
+        name: ObjectNameKey
+        required: true
+        type: string
+      produces:
+      - image/png
+      - image/jpeg
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get a file from MinIO
+      tags:
+      - minio
+  /minio/uploadImage:
+    post:
+      consumes:
+      - image/png
+      - image/jpeg
+      description: Upload a file to MinIO storage
+      parameters:
+      - description: User calling api
+        in: query
+        name: TaskUser
+        required: true
+        type: string
+      - description: File to be uploaded
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: The name of the minio bucket
+        in: query
+        name: BucketNameKey
+        required: true
+        type: string
+      - description: File extension (e.g., png, jpeg)
+        in: formData
+        name: extension
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Upload a file to MinIO
+      tags:
+      - minio
 swagger: "2.0"

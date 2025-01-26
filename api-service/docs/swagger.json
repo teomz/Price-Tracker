@@ -4,9 +4,9 @@
         "contact": {}
     },
     "paths": {
-        "/example/helloworld": {
-            "get": {
-                "description": "do ping",
+        "/minio/deleteImage": {
+            "delete": {
+                "description": "Get a file from MinIO storage",
                 "consumes": [
                     "application/json"
                 ],
@@ -14,16 +14,203 @@
                     "application/json"
                 ],
                 "tags": [
-                    "example"
+                    "minio"
                 ],
-                "summary": "ping example",
+                "summary": "Get a file from MinIO",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User calling api",
+                        "name": "TaskUser",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The name of the minio bucket",
+                        "name": "BucketNameKey",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The name of the object in minio",
+                        "name": "ObjectNameKey",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
+                }
+            }
+        },
+        "/minio/getImage": {
+            "get": {
+                "description": "Get a file from MinIO storage",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "image/png",
+                    "image/jpeg"
+                ],
+                "tags": [
+                    "minio"
+                ],
+                "summary": "Get a file from MinIO",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User calling api",
+                        "name": "TaskUser",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The name of the minio bucket",
+                        "name": "BucketNameKey",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The name of the object in minio",
+                        "name": "ObjectNameKey",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/minio/uploadImage": {
+            "post": {
+                "description": "Upload a file to MinIO storage",
+                "consumes": [
+                    "image/png",
+                    "image/jpeg"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "minio"
+                ],
+                "summary": "Upload a file to MinIO",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User calling api",
+                        "name": "TaskUser",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "File to be uploaded",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The name of the minio bucket",
+                        "name": "BucketNameKey",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "File extension (e.g., png, jpeg)",
+                        "name": "extension",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "bucketname": {
+                    "type": "string"
+                },
+                "objectname": {
+                    "type": "string"
                 }
             }
         }
