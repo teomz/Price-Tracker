@@ -3,13 +3,11 @@ package main
 import (
 	"log"
 	"os"
-
-	"github.com/teomz/Price-Tracker/api-service/minio"
 )
 
 func main() {
-	r := minio.Initialize()
 
+	r := initialization()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -28,4 +26,5 @@ func main() {
 	// }
 
 	// You can add more logic here if necessary after initialization
+
 }

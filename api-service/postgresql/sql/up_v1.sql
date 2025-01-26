@@ -5,14 +5,17 @@ CREATE TABLE IF NOT EXISTS omnibus (
 		price REAL NOT NULL,
 		version VARCHAR(20) NOT NULL,
 		pagecount INT NOT NULL,
-		date_created TIMESTAMP,
+		datecreated TIMESTAMP,
 		publisher TEXT NOT NULL,
 		imgpath TEXT,
 		isturl TEXT,
 		amazonurl TEXT,
+		cgnurl TEXT,
+		lastupdated TIMESTAMP,
+		status TEXT,
         PRIMARY KEY (upc, code)  
-        
 	);
+
 
 	CREATE TABLE IF NOT EXISTS sale (
     date DATE,                     -- Store the date only (no time)

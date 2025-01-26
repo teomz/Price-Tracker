@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
 	"github.com/teomz/Price-Tracker/api-service/models"
 	"github.com/teomz/Price-Tracker/api-service/utilities"
@@ -33,14 +32,10 @@ import (
 func uploadImage(g *gin.Context) {
 
 	envFile := "../.env"
-	if _, err := os.Stat(envFile); os.IsNotExist(err) {
-		log.Printf("No .env file found at: %s\n", envFile)
-	} else {
-		// Load the .env file
-		err := godotenv.Load(envFile)
-		if err != nil {
-			log.Printf("Error loading .env file: %v", err)
-		}
+	err := utilities.LoadEnvFile(envFile)
+	if err != nil {
+		// Handle error if necessary
+		log.Println("Error occurred while loading .env file.")
 	}
 
 	extList := []string{"png", "jpeg"}
@@ -53,10 +48,9 @@ func uploadImage(g *gin.Context) {
 		return
 	}
 
-	userID := g.DefaultQuery("TaskUser", "default_user")
-	if userID != os.Getenv("AIRFLOW_USER") {
+	if err := utilities.CheckUser(g, os.Getenv("AIRFLOW_USER")); err != nil {
 		g.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Action: "UploadImage",
+			Action: "uploadImage",
 			Error:  "Wrong User",
 		})
 		return

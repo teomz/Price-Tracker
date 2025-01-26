@@ -6,25 +6,21 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/teomz/Price-Tracker/api-service/utilities"
 )
 
 // createMinioInstance initializes and returns a MinIO client.
 func createMinioInstance() (*minio.Client, error) {
 
-	ctx := context.Background()
 	envFile := "../.env"
-	if _, err := os.Stat(envFile); os.IsNotExist(err) {
-		log.Printf("No .env file found at: %s\n", envFile)
-	} else {
-		// Load the .env file
-		err := godotenv.Load(envFile)
-		if err != nil {
-			log.Printf("Error loading .env file: %v", err)
-		}
+	err := utilities.LoadEnvFile(envFile)
+	if err != nil {
+		// Handle error if necessary
+		log.Println("Error occurred while loading .env file.")
 	}
+
 	log.Println("Connecting to Minio ... ")
 
 	// Retrieve MinIO configurations from environment variables
@@ -48,7 +44,19 @@ func createMinioInstance() (*minio.Client, error) {
 		return nil, err
 	}
 
+	// Return the MinIO client instance
+	return minioClient, nil
+}
+
+func Setup() error {
+
 	// Ensure the bucket 'InfoImage' exists, create it if necessary
+
+	ctx := context.Background()
+	minioClient, err := createMinioInstance()
+	if err != nil {
+		return err
+	}
 	bucketName := "infoimage"
 	location := "local"
 
@@ -59,12 +67,11 @@ func createMinioInstance() (*minio.Client, error) {
 		if errBucketExists == nil && exists {
 			log.Printf("We already own %s\n", bucketName)
 		} else {
-			log.Fatalln(err)
-			return nil, err
+			return err
 		}
 	} else {
 		log.Printf("Successfully created %s\n", bucketName)
 	}
-	// Return the MinIO client instance
-	return minioClient, nil
+
+	return nil
 }

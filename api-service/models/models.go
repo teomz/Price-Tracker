@@ -41,6 +41,12 @@ type SuccessResponse struct {
 	ObjectName string `json:"objectname"`
 }
 
+type SuccessDataResponse struct {
+	Action   string    `json:"action"`
+	Inserted []string  `json:"inserted"`
+	Failed   []Omnibus `json:"failed"`
+}
+
 func (o Omnibus) String() string {
 	return fmt.Sprintf(
 		"Omnibus: {UPC: %s, Code: %s, Name: %s, Publisher: %s, Price: $%.2f, Version: %s, PageCount: %d, Released: %s, IST URL: %s, Amazon URL: %s, CGN URL: %s, ImgPath: %s, Last Updated: %s}",

@@ -1,4 +1,4 @@
-package database
+package postgresql
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
+	"github.com/teomz/Price-Tracker/api-service/utilities"
 )
 
 type DatabaseController struct {
@@ -17,15 +17,12 @@ type DatabaseController struct {
 func createDBInstance() (*DatabaseController, error) {
 
 	envFile := "../.env"
-	if _, err := os.Stat(envFile); os.IsNotExist(err) {
-		log.Printf("No .env file found at: %s\n", envFile)
-	} else {
-		// Load the .env file
-		err := godotenv.Load(envFile)
-		if err != nil {
-			log.Printf("Error loading .env file: %v", err)
-		}
+	err := utilities.LoadEnvFile(envFile)
+	if err != nil {
+		// Handle error if necessary
+		log.Println("Error occurred while loading .env file.")
 	}
+
 	fmt.Println("Connecting to Postgres ... ")
 
 	postgresUser := os.Getenv("POSTGRES_USER")
@@ -33,8 +30,6 @@ func createDBInstance() (*DatabaseController, error) {
 	postgresDB := os.Getenv("POSTGRES_DB")
 	hostDB := os.Getenv("HOST_DB")
 	postgresPort := os.Getenv("POSTGRES_PORT")
-
-	fmt.Println(postgresDB)
 
 	conString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", postgresUser, postgresPassword, hostDB, postgresPort, postgresDB)
 
@@ -47,13 +42,13 @@ func createDBInstance() (*DatabaseController, error) {
 		pool: pool,
 	}
 
-	fmt.Println(db.Health())
+	fmt.Println(db.health())
 
 	return db, nil
 
 }
 
-func (db *DatabaseController) Health() string {
+func (db *DatabaseController) health() string {
 	err := db.pool.Ping(context.Background())
 	if err != nil {
 		return err.Error()
@@ -63,21 +58,21 @@ func (db *DatabaseController) Health() string {
 	return message
 }
 
-func (db *DatabaseController) Close() {
+func (db *DatabaseController) close() {
 	db.pool.Close()
 }
 
-func Initialize() error {
+func Setup() error {
 	db, err := createDBInstance()
 	if err != nil {
 		return err
 
 	}
-	defer db.Close()
+	defer db.close()
 
 	fmt.Println("Running sql query ...")
 
-	sqlFile := "./database/sql/up_v1.sql"
+	sqlFile := "./postgresql/sql/up_v1.sql"
 	query, err := os.ReadFile(sqlFile)
 
 	if err != nil {

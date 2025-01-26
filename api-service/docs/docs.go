@@ -45,7 +45,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "The name of the object in minio",
+                        "description": "The name of the object with extension in minio eg image.png",
                         "name": "ObjectNameKey",
                         "in": "query",
                         "required": true
@@ -104,7 +104,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "The name of the object in minio",
+                        "description": "The name of the object with extension in minio eg image.png",
                         "name": "ObjectNameKey",
                         "in": "query",
                         "required": true
@@ -197,6 +197,62 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/postgresql/uploadInfo": {
+            "post": {
+                "description": "Upload an array of items (Omnibus) to the PostgreSQL database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "postgres"
+                ],
+                "summary": "Upload data to PostgreSQL",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User calling the API",
+                        "name": "TaskUser",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Array of items to upload",
+                        "name": "sales",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Omnibus"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessDataResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -208,6 +264,87 @@ const docTemplate = `{
                 },
                 "error": {
                     "type": "string"
+                }
+            }
+        },
+        "models.Omnibus": {
+            "type": "object",
+            "properties": {
+                "LastUpdated": {
+                    "description": "Last Update on Info",
+                    "type": "string"
+                },
+                "amazonurl": {
+                    "description": "URL to Amazon",
+                    "type": "string"
+                },
+                "cgnurl": {
+                    "description": "URL to CDN",
+                    "type": "string"
+                },
+                "code": {
+                    "description": "A distributor SKU code",
+                    "type": "string"
+                },
+                "imgpath": {
+                    "description": "Path to the image file",
+                    "type": "string"
+                },
+                "isturl": {
+                    "description": "URL to IST",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the omnibus",
+                    "type": "string"
+                },
+                "pagecount": {
+                    "description": "Total number of pages",
+                    "type": "integer"
+                },
+                "price": {
+                    "description": "Price of the omnibus",
+                    "type": "number"
+                },
+                "publisher": {
+                    "description": "Publisher of the omnibus",
+                    "type": "string"
+                },
+                "releaseddate": {
+                    "description": "Creation date",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Hot , Cold , Archive",
+                    "type": "string"
+                },
+                "upc": {
+                    "description": "Universal Product Code",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "Standard or DM version",
+                    "type": "string"
+                }
+            }
+        },
+        "models.SuccessDataResponse": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "failed": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Omnibus"
+                    }
+                },
+                "inserted": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

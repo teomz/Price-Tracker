@@ -1,5 +1,6 @@
 #!/bin/bash
 
+cd .
 # Exit script on error
 set -e
 

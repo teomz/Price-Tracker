@@ -1,9 +1,9 @@
 version: '3.9'
 
 services:
-  db:
+  postgres:
     image: postgres:latest
-    container_name: postgres-db
+    container_name: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -11,9 +11,8 @@ services:
     ports:
       - ${POSTGRES_PORT}:${POSTGRES_PORT} # Exposing PostgreSQL port to the host machine
     volumes:
-      - ./postgres_data:/data  # Mount the volume to the container
-    networks:
-      - postgres-network
+      - ./postgres_data:/var/lib/postgresql/data  # Mount the volume to the container
+      - ./api-service/postgresql/sql/up_v1.sql:/docker-entrypoint-initdb.d/up_v1.sql
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
       interval: 30s
@@ -31,8 +30,8 @@ services:
       MINIO_ROOT_USER:  ${MINIO_USER}        # MinIO access key
       MINIO_ROOT_PASSWORD:  ${MINIO_PASSWORD}   # MinIO secret key
     volumes:
-      - ./minio_data:/data   
-    command: server /data --console-address ":9090"                # Persist MinIO data on host
+      - ./minio_data:/data                   # Persist MinIO data on host
+    command: server /data
 
   api-service:
     build: ./api-service
@@ -43,8 +42,12 @@ services:
     environment:
       MINIO_ENDPOINT:  ${MINIO_ENDPOINT}   # Endpoint of MinIO in the compose setup
       MINIO_ACCESS_KEY: ${MINIO_USER}         # MinIO access key
-      MINIO_SECRET_KEY: ${MINIO_PASSWORD}  
-      AIRFLOW_USER :  ${AIRFLOW_USER}       # MinIO secret key
+      MINIO_SECRET_KEY: ${MINIO_PASSWORD}     # MinIO secret key
+      AIRFLOW_USER: ${AIRFLOW_USER}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      HOST_DB:  ${HOST_DB}
 
   # # Optional: Your app container here
   # app:
@@ -57,6 +60,4 @@ services:
   #   environment:
   #     DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
 
-networks:
-  postgres-network:
-    driver: bridge
+

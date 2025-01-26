@@ -2,11 +2,14 @@ package utilities
 
 import (
 	"fmt"
+	"log"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -17,6 +20,7 @@ const (
 	ErrInvalidFileExtension = "Invalid file extension. Only allowed extensions are: %v"
 	ErrInvalidMimeType      = "Invalid MIME type. Allowed types are: %v"
 	SuccessFileValid        = "File is valid"
+	ErrInvalidUser          = "Invalid user"
 )
 
 // Validate_File validates the file upload based on extensions and MIME types
@@ -82,4 +86,27 @@ func GetFile(g *gin.Context) (*multipart.FileHeader, multipart.File, error) {
 	}
 
 	return file, fileContent, nil
+}
+
+func CheckUser(g *gin.Context, user_env string) error {
+	userID := g.DefaultQuery("TaskUser", "default_user")
+	if userID != user_env {
+		return fmt.Errorf(ErrInvalidUser)
+	}
+	return nil
+}
+
+func LoadEnvFile(envFilePath string) error {
+	if _, err := os.Stat(envFilePath); os.IsNotExist(err) {
+		log.Printf("No .env file found at: %s\n", envFilePath)
+		return nil // No error, just log and return
+	} else {
+		// Load the .env file
+		err := godotenv.Load(envFilePath)
+		if err != nil {
+			log.Printf("Error loading .env file: %v", err)
+			return err // Return the error if loading fails
+		}
+	}
+	return nil
 }
