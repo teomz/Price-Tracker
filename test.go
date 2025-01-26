@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/teomz/Price-Tracker/api-service/scraper"
 	"fmt"
+	"github.com/teomz/Price-Tracker/api-service/scraper"
 )
 
 func main() {

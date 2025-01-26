@@ -20,10 +20,9 @@ tasks:
   swag:
 
       cmds:
-        - export GOPATH=$HOME/go
-        - export PATH=$PATH:$GOPATH/bin
-        - source ~/.bashrc
-        - go install github.com/swaggo/swag/cmd/swag@latest
+      - chmod +x ./api-service/init/swag.sh
+      - bash ./api-service/init/swag.sh
+
 
 
 

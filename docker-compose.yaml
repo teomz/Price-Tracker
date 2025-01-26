@@ -31,18 +31,20 @@ services:
       MINIO_ROOT_USER:  ${MINIO_USER}        # MinIO access key
       MINIO_ROOT_PASSWORD:  ${MINIO_PASSWORD}   # MinIO secret key
     volumes:
-      - ./minio_data:/data                   # Persist MinIO data on host
+      - ./minio_data:/data   
+    command: server /data --console-address ":9090"                # Persist MinIO data on host
 
-  app:
+  api-service:
     build: ./api-service
     ports:
       - "8080:8080"                           # Expose the API port
     depends_on:
       - minio
     environment:
-      MINIO_ENDPOINT: "http://minio:9000"    # Endpoint of MinIO in the compose setup
+      MINIO_ENDPOINT:  ${MINIO_ENDPOINT}   # Endpoint of MinIO in the compose setup
       MINIO_ACCESS_KEY: ${MINIO_USER}         # MinIO access key
-      MINIO_SECRET_KEY: ${MINIO_PASSWORD}         # MinIO secret key
+      MINIO_SECRET_KEY: ${MINIO_PASSWORD}  
+      AIRFLOW_USER :  ${AIRFLOW_USER}       # MinIO secret key
 
   # # Optional: Your app container here
   # app:
@@ -58,7 +60,3 @@ services:
 networks:
   postgres-network:
     driver: bridge
-
-volumes:
-  postgres-data:  # This defines the persistent volume
-    driver: local  # Local driver is used by default

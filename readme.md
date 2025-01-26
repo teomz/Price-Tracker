@@ -9,6 +9,7 @@ This is a microservices-based price tracking website that collects and displays 
 - **Airflow**: Scheduling and managing scraping tasks
 - **PostgreSQL**: Database for storing scraped price data
 - **DBT (optional)**: Data quality and transformation tool (to be implemented later)
+- **MinIO**: Open-source object storage server for image/objects (Simulate S3 server)
 
 ## Prerequisites
 - Docker and Docker Compose
@@ -27,14 +28,17 @@ price-tracker/
 │   ├── main.go
 │   ├── go.mod          
 │   ├── minio/
-│   │   ├── main.go
-│   │   ├── handlers/
-│   │   ├── go.mod
-│   │   ├── upload.go
-│   │   ├── fetch.go
-│   │   └── delete.go
+│   │   ├── minio.go          # api gateway
+│   │   ├── init.go           # initiliaze minio    
+│   │   ├── upload.go         # upload file into minio
+│   │   ├── get.go            # get file from minio
+│   │   └── delete.go         # delete file in minio
 │   └── Dockerfile
-│
+│   
+│  
+│  // Work In Progress
+│  
+│  
 ├── frontend/                  # TypeScript frontend (React or similar)
 │   ├── public/
 │   ├── src/
@@ -60,8 +64,9 @@ price-tracker/
 ## **API Service**
 
 ### **Endpoints**
-- **`GET /scrape`**: Triggers the scraping process and inserts data into the database.
-- **`GET /health`**: Health check endpoint.
+- **`GET /minio/getImage`**: retrieve image from minio.
+- **`POST /minio/uploadImage`**: upload image into minio.
+- **`DELETE /minio/deleteImage`**: delete image in minio.
 
 
 
