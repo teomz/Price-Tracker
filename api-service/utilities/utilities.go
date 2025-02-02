@@ -1,6 +1,7 @@
 package utilities
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"mime/multipart"
@@ -17,7 +18,7 @@ const (
 	ErrNoFileUploaded       = "No file is uploaded"
 	ErrFileOpenFailed       = "Failed to open file"
 	ErrFileReadFailed       = "Failed to read file content"
-	ErrInvalidFileExtension = "Invalid file extension. Only allowed extensions are: %v"
+	ErrInvalidFileExtension = "Invalid file extension %v. Only allowed extensions are: %v"
 	ErrInvalidMimeType      = "Invalid MIME type. Allowed types are: %v"
 	SuccessFileValid        = "File is valid"
 	ErrInvalidUser          = "Invalid user"
@@ -39,11 +40,11 @@ func Validate_File(g *gin.Context, ext_list []string, mime_list []string) (strin
 	// Get the file extension and convert it to lowercase
 	//ext := strings.ToLower(filepath.Ext(file.Filename))
 
-	ext := g.DefaultPostForm("extension", "")
+	ext := g.DefaultPostForm("extension", "jpeg")
 
 	// Check if the file extension is in the allowed list using map lookup
 	if !validExts[ext] {
-		return "", fmt.Errorf(ErrInvalidFileExtension, ext_list)
+		return "", fmt.Errorf(ErrInvalidFileExtension, ext, ext_list)
 	}
 
 	// Open the file to check the MIME type
@@ -108,5 +109,41 @@ func LoadEnvFile(envFilePath string) error {
 			return err // Return the error if loading fails
 		}
 	}
+	return nil
+}
+
+func ValidateQuery(query string, allowedQueryTypes []string, allowedTables []string) error {
+	// Convert to uppercase for case-insensitive matching
+	upperQuery := strings.ToUpper(strings.TrimSpace(query))
+
+	// Ensure query starts with allowed types (basic SQL injection protection)
+	valid := false
+	for _, qType := range allowedQueryTypes {
+		if strings.HasPrefix(upperQuery, qType) {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return errors.New("invalid query type")
+	}
+
+	// Ensure the table name exists in the whitelist
+	tableValid := false
+	for _, table := range allowedTables {
+		if strings.Contains(query, table) {
+			tableValid = true
+			break
+		}
+	}
+	if !tableValid {
+		return errors.New("unauthorized table access")
+	}
+
+	// Basic check to prevent dangerous operations
+	if strings.Contains(upperQuery, "DROP TABLE") || strings.Contains(upperQuery, "DELETE FROM") {
+		return errors.New("dangerous query detected")
+	}
+
 	return nil
 }

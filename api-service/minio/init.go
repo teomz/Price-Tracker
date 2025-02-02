@@ -48,30 +48,33 @@ func createMinioInstance() (*minio.Client, error) {
 	return minioClient, nil
 }
 
-func Setup() error {
+func setup() {
+	// List of bucket names to ensure their existence
+	bucketNames := []string{"infoimage", "rawjson"}
+	location := "local"
 
-	// Ensure the bucket 'InfoImage' exists, create it if necessary
-
+	// Create Minio client
 	ctx := context.Background()
 	minioClient, err := createMinioInstance()
 	if err != nil {
-		return err
+		log.Printf(err.Error())
+		return
 	}
-	bucketName := "infoimage"
-	location := "local"
 
-	err = minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{Region: location})
-	if err != nil {
-		// Check to see if we already own this bucket (which happens if you run this twice)
-		exists, errBucketExists := minioClient.BucketExists(ctx, bucketName)
-		if errBucketExists == nil && exists {
-			log.Printf("We already own %s\n", bucketName)
+	// Loop through the list of bucket names and ensure each exists
+	for _, bucketName := range bucketNames {
+		// Try to create the bucket
+		err = minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{Region: location})
+		if err != nil {
+			// Check if the bucket already exists
+			exists, errBucketExists := minioClient.BucketExists(ctx, bucketName)
+			if errBucketExists == nil && exists {
+				log.Printf("We already own %s\n", bucketName)
+			} else {
+				log.Printf("Error creating bucket %s: %s\n", bucketName, err.Error())
+			}
 		} else {
-			return err
+			log.Printf("Successfully created %s\n", bucketName)
 		}
-	} else {
-		log.Printf("Successfully created %s\n", bucketName)
 	}
-
-	return nil
 }

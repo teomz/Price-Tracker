@@ -5,7 +5,7 @@ import (
 )
 
 func Initialize(g *gin.RouterGroup) {
-
+	setup()
 	minio_group := g.Group("/minio")
 	{
 		minio_group.POST("/uploadImage", uploadImage)

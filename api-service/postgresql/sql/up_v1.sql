@@ -1,6 +1,5 @@
 CREATE TABLE IF NOT EXISTS omnibus (
 		upc VARCHAR(13) NOT NULL,
-		code VARCHAR(9) NOT NULL,
 		name TEXT NOT NULL,
 		price REAL NOT NULL,
 		version VARCHAR(20) NOT NULL,
@@ -13,7 +12,7 @@ CREATE TABLE IF NOT EXISTS omnibus (
 		cgnurl TEXT,
 		lastupdated TIMESTAMP,
 		status TEXT,
-        PRIMARY KEY (upc, code)  
+        PRIMARY KEY (upc)  
 	);
 
 

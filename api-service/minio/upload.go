@@ -2,6 +2,7 @@ package minio
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -31,11 +32,26 @@ import (
 // @Router /minio/uploadImage [post]
 func uploadImage(g *gin.Context) {
 
+	err := g.Request.ParseMultipartForm(10 << 20) // Max 10 MB
+
+	if err != nil {
+		fmt.Println("Error parsing multipart form:", err)
+		return
+	}
+
 	envFile := "../.env"
-	err := utilities.LoadEnvFile(envFile)
+	err = utilities.LoadEnvFile(envFile)
 	if err != nil {
 		// Handle error if necessary
 		log.Println("Error occurred while loading .env file.")
+	}
+
+	if err := utilities.CheckUser(g, os.Getenv("AIRFLOW_USER")); err != nil {
+		g.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Action: "uploadImage",
+			Error:  "Wrong User",
+		})
+		return
 	}
 
 	extList := []string{"png", "jpeg"}
@@ -44,14 +60,6 @@ func uploadImage(g *gin.Context) {
 		g.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Action: "UploadImage",
 			Error:  err.Error(),
-		})
-		return
-	}
-
-	if err := utilities.CheckUser(g, os.Getenv("AIRFLOW_USER")); err != nil {
-		g.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Action: "uploadImage",
-			Error:  "Wrong User",
 		})
 		return
 	}

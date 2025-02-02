@@ -210,14 +210,11 @@
                     },
                     {
                         "description": "Array of items to upload",
-                        "name": "sales",
+                        "name": "Query",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Omnibus"
-                            }
+                            "$ref": "#/definitions/models.QueryRequest"
                         }
                     }
                 ],
@@ -226,6 +223,57 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.SuccessDataResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/scraper/getScrapedInfo": {
+            "get": {
+                "description": "Get data from scraper by providing the url and platform params",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scraper"
+                ],
+                "summary": "Get data from scraper",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User calling the API",
+                        "name": "TaskUser",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "URL source for scraping",
+                        "name": "URL",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessScraperResponse"
                         }
                     },
                     "400": {
@@ -265,14 +313,6 @@
                 },
                 "amazonurl": {
                     "description": "URL to Amazon",
-                    "type": "string"
-                },
-                "cgnurl": {
-                    "description": "URL to CDN",
-                    "type": "string"
-                },
-                "code": {
-                    "description": "A distributor SKU code",
                     "type": "string"
                 },
                 "imgpath": {
@@ -317,17 +357,27 @@
                 }
             }
         },
+        "models.QueryRequest": {
+            "type": "object",
+            "required": [
+                "query",
+                "values"
+            ],
+            "properties": {
+                "query": {
+                    "type": "string"
+                },
+                "values": {
+                    "type": "array",
+                    "items": {}
+                }
+            }
+        },
         "models.SuccessDataResponse": {
             "type": "object",
             "properties": {
                 "action": {
                     "type": "string"
-                },
-                "failed": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Omnibus"
-                    }
                 },
                 "inserted": {
                     "type": "array",
@@ -348,6 +398,20 @@
                 },
                 "objectname": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SuccessScraperResponse": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Omnibus"
+                    }
                 }
             }
         }

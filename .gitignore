@@ -1,3 +1,7 @@
 .env
 minio_data
 postgres_data
+./api-service/test.go
+amazon.go
+IST_old.go
+test.go

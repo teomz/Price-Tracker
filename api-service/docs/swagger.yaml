@@ -14,12 +14,6 @@ definitions:
       amazonurl:
         description: URL to Amazon
         type: string
-      cgnurl:
-        description: URL to CDN
-        type: string
-      code:
-        description: A distributor SKU code
-        type: string
       imgpath:
         description: Path to the image file
         type: string
@@ -51,14 +45,21 @@ definitions:
         description: Standard or DM version
         type: string
     type: object
+  models.QueryRequest:
+    properties:
+      query:
+        type: string
+      values:
+        items: {}
+        type: array
+    required:
+    - query
+    - values
+    type: object
   models.SuccessDataResponse:
     properties:
       action:
         type: string
-      failed:
-        items:
-          $ref: '#/definitions/models.Omnibus'
-        type: array
       inserted:
         items:
           type: string
@@ -72,6 +73,15 @@ definitions:
         type: string
       objectname:
         type: string
+    type: object
+  models.SuccessScraperResponse:
+    properties:
+      action:
+        type: string
+      data:
+        items:
+          $ref: '#/definitions/models.Omnibus'
+        type: array
     type: object
 info:
   contact: {}
@@ -213,12 +223,10 @@ paths:
         type: string
       - description: Array of items to upload
         in: body
-        name: sales
+        name: Query
         required: true
         schema:
-          items:
-            $ref: '#/definitions/models.Omnibus'
-          type: array
+          $ref: '#/definitions/models.QueryRequest'
       produces:
       - application/json
       responses:
@@ -237,4 +245,38 @@ paths:
       summary: Upload data to PostgreSQL
       tags:
       - postgres
+  /scraper/getScrapedInfo:
+    get:
+      consumes:
+      - application/json
+      description: Get data from scraper by providing the url and platform params
+      parameters:
+      - description: User calling the API
+        in: query
+        name: TaskUser
+        required: true
+        type: string
+      - description: URL source for scraping
+        in: query
+        name: URL
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessScraperResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get data from scraper
+      tags:
+      - scraper
 swagger: "2.0"

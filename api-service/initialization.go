@@ -7,6 +7,7 @@ import (
 	docs "github.com/teomz/Price-Tracker/api-service/docs"
 	"github.com/teomz/Price-Tracker/api-service/minio"
 	"github.com/teomz/Price-Tracker/api-service/postgresql"
+	"github.com/teomz/Price-Tracker/api-service/scraper"
 )
 
 // @host      localhost:8080
@@ -19,12 +20,13 @@ import (
 
 func initialization() *gin.Engine {
 	r := gin.Default()
-
+	r.MaxMultipartMemory = 10 << 20
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	v1 := r.Group("/api/v1")
 	{
 		minio.Initialize(v1)
 		postgresql.Initialize(v1)
+		scraper.Initialize(v1)
 	}
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 

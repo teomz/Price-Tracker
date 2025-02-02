@@ -26,6 +26,7 @@ price-tracker/
 │
 ├── api-service/               # Go API service for web scraping and backend
 │   ├── main.go
+│   ├── initialization.go 
 │   ├── go.mod          
 │   ├── minio/
 │   │   ├── minio.go          # api gateway
@@ -33,11 +34,18 @@ price-tracker/
 │   │   ├── upload.go         # upload file into minio
 │   │   ├── get.go            # get file from minio
 │   │   └── delete.go         # delete file in minio
-│   └── Dockerfile
-│   
+│   ├── postgres/
+│   │   ├── SQL               # SQL folder
+│   │   ├── postgres.go       # api gateway
+│   │   ├── init.go           # initiliaze postgres    
+│   │   └── upload.go         # post query into postgres
+│   ├── scraper/
+│   │   ├── scraper.go        # api gateway
+│   │   ├── IST.go            # platform specific scraping
+│   │   └── get.go            # get info in json format
+│   └── Dockerfile   
 │  
 │  // Work In Progress
-│  
 │  
 ├── frontend/                  # TypeScript frontend (React or similar)
 │   ├── public/
@@ -66,8 +74,8 @@ price-tracker/
 ### **Endpoints**
 - **`GET /minio/getImage`**: retrieve image from minio.
 - **`POST /minio/uploadImage`**: upload image into minio.
-- **`DELETE /minio/deleteImage`**: delete image in minio.
-
+- **`POST /postgres/uploadInfo`**: upload data in postgres.
+- **`GET /scraper/getScrapedInfo`**: get product info in json fomat.
 
 
 ## **Future Enhancements**
