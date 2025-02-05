@@ -301,6 +301,50 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/scraper/getScrapedSale": {
+            "get": {
+                "description": "Get sale from scraper by providing the url and platform params",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scraper"
+                ],
+                "summary": "Get sale from scraper",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User calling the API",
+                        "name": "TaskUser",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessSaleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -384,6 +428,45 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Sale": {
+            "type": "object",
+            "properties": {
+                "LastUpdated": {
+                    "description": "Last Update on Sale",
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "percent": {
+                    "description": "Sale percentage over the original price",
+                    "type": "integer"
+                },
+                "platform": {
+                    "description": "Platform name (e.g., IST, Amazon)",
+                    "type": "string"
+                },
+                "sale": {
+                    "description": "Daily sale price",
+                    "type": "number"
+                },
+                "upc": {
+                    "description": "Universal Product Code",
+                    "type": "string"
+                }
+            }
+        },
+        "models.SaleUrls": {
+            "type": "object",
+            "properties": {
+                "Amazon": {
+                    "type": "string"
+                },
+                "IST": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SuccessDataResponse": {
             "type": "object",
             "properties": {
@@ -409,6 +492,20 @@ const docTemplate = `{
                 },
                 "objectname": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SuccessSaleResponse": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Sale"
+                    }
                 }
             }
         },

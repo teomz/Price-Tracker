@@ -21,7 +21,7 @@ type Omnibus struct {
 }
 
 type Sale struct {
-	Date        time.Time `json:"date"`
+	Date        string    `json:"date"`
 	UPC         string    `json:"upc"`         // Universal Product Code
 	Sale        float32   `json:"sale"`        // Daily sale price
 	Platform    string    `json:"platform"`    // Platform name (e.g., IST, Amazon)
@@ -57,6 +57,20 @@ type SuccessScraperResponse struct {
 	Data   []Omnibus `json:"data"`
 }
 
+type SuccessSaleResponse struct {
+	Action string `json:"action"`
+	Data   []Sale `json:"data"`
+}
+
+type SaleUrls struct {
+	Amazon string `json:"Amazon"`
+	IST    string `json:"IST"`
+}
+
+type SaleParams struct {
+	Data []SaleUrls `json:"saleurls"`
+}
+
 func (o Omnibus) String() string {
 	return fmt.Sprintf(
 		"Omnibus: {UPC: %s, Name: %s, Publisher: %s, Price: $%.2f, Version: %s, PageCount: %d, Released: %s, IST URL: %s, Amazon URL: %s, ImgPath: %s, Last Updated: %s}",
@@ -67,6 +81,6 @@ func (o Omnibus) String() string {
 func (s Sale) String() string {
 	return fmt.Sprintf(
 		"Sale: {Date: %s, UPC: %s, Sale Price: $%.2f, Platform: %s, Discount: %d%%,  Last Updated: %s}",
-		s.Date.Format(time.RFC3339), s.UPC, s.Sale, s.Platform, s.Percent, s.LastUpdated.Format(time.RFC3339),
+		s.Date, s.UPC, s.Sale, s.Platform, s.Percent, s.LastUpdated.Format(time.RFC3339),
 	)
 }

@@ -27,15 +27,9 @@ const (
 // Validate_File validates the file upload based on extensions and MIME types
 func Validate_File(g *gin.Context, ext_list []string, mime_list []string) (string, error) {
 	// Convert the extension list and MIME list into maps for quick lookups
-	validExts := make(map[string]bool)
-	for _, ext := range ext_list {
-		validExts[strings.ToLower(ext)] = true
-	}
+	validExts := MakeSet(ext_list)
 
-	validMimes := make(map[string]bool)
-	for _, mime := range mime_list {
-		validMimes[mime] = true
-	}
+	validMimes := MakeSet(mime_list)
 
 	// Get the file extension and convert it to lowercase
 	//ext := strings.ToLower(filepath.Ext(file.Filename))
@@ -146,4 +140,12 @@ func ValidateQuery(query string, allowedQueryTypes []string, allowedTables []str
 	}
 
 	return nil
+}
+
+func MakeSet(slice []string) map[string]bool {
+	set := make(map[string]bool)
+	for _, v := range slice {
+		set[v] = true
+	}
+	return set
 }

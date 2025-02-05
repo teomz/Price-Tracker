@@ -17,6 +17,7 @@ func Initialize(g *gin.RouterGroup) {
 	scraper_group := g.Group("/scraper")
 	{
 		scraper_group.GET("/getScrapedInfo", getScrapedInfo)
+		scraper_group.GET("/getScrapedSale", getScrapedSale)
 	}
 
 }

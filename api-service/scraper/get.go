@@ -18,7 +18,7 @@ import (
 var (
 	omnibusData = make(map[string]*models.Omnibus) // Shared storage for Omnibus structs
 	mutex       = sync.Mutex{}                     // Prevents race conditions
-	wg          sync.WaitGroup                     // WaitGroup to track Scraper 2 tasks
+	wg          sync.WaitGroup                     // WaitGroup
 )
 
 // getScrapedInfo godoc
@@ -66,11 +66,14 @@ func getScrapedInfo(g *gin.Context) {
 		}
 	}()
 
+	// if i%%10
+
 	// Start a goroutine to collect
 	go func() {
 
 		for omnibus := range resultChan {
 			omnibusList = append(omnibusList, omnibus) // Collect results
+			wg.Done()
 		}
 
 	}()
@@ -91,6 +94,7 @@ func getScrapedInfo(g *gin.Context) {
 func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus) {
 
 	c := colly.NewCollector(
+		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
 		colly.AllowedDomains("www.amazon.sg", "amazon.sg"),
 		colly.MaxDepth(1),
 	)
@@ -111,12 +115,39 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus)
 			if omnibus, exists := omnibusData[upc]; exists {
 				omnibus.AmazonUrl = amazonurl
 				resultChan <- *omnibus // Send completed Omnibus data
+			} else {
 			}
 			mutex.Unlock()
 			foundFirst = true
-			wg.Done()
 
 		}
+	})
+
+	c.OnError(func(r *colly.Response, err error) {
+		// Log the error details
+		mutex.Lock()
+		if omnibus, exists := omnibusData[upc]; exists {
+			omnibus.AmazonUrl = "Error"
+			resultChan <- *omnibus // Send completed Omnibus data
+		} else {
+			// Optionally handle the case when omnibus data is not found
+		}
+		mutex.Unlock()
+		foundFirst = true
+	})
+
+	c.OnScraped(func(r *colly.Response) {
+		if !foundFirst {
+			// Log the error details
+			mutex.Lock()
+			if omnibus, exists := omnibusData[upc]; exists {
+				resultChan <- *omnibus // Send completed Omnibus data
+			} else {
+			}
+			mutex.Unlock()
+			foundFirst = true
+		}
+
 	})
 
 	c.Visit(source)
@@ -136,10 +167,13 @@ func scrapeIST(source string, upcChan chan string, resultChan chan models.Omnibu
 	// this will get the 2nd link from source
 	c.OnHTML("div[class=title]", func(e *colly.HTMLElement) {
 		name := e.ChildText("a")
-		if strings.Contains(name, "Omni") && strings.Contains(name, "HC") {
+		if (strings.Contains(name, "Omni") && strings.Contains(name, "HC")) ||
+			(strings.Contains(name, "Deluxe") && strings.Contains(name, "HC")) ||
+			(strings.Contains(name, "Library") && strings.Contains(name, "HC")) ||
+			(strings.Contains(name, "Omni") && strings.Contains(name, "Conan")) {
+			wg.Add(1)
 			link := e.Request.AbsoluteURL(e.ChildAttr("a", "href"))
 			go scrapeISTInfo(link, upcChan, resultChan)
-			wg.Add(1)
 		}
 	})
 
@@ -202,7 +236,6 @@ func scrapeISTInfo(source string, upcChan chan string, resultChan chan models.Om
 			upcChan <- product.UPC // Send completed Omnibus data
 		} else {
 			resultChan <- *product
-			wg.Done()
 		}
 	})
 	// Start scraping by visiting the source URL
