@@ -82,3 +82,11 @@ price-tracker/
 - Add authentication to the API.
 - Integrate monitoring tools like Prometheus and Grafana.
 
+
+Pipeline Flow
+Scraper API → Fetch JSON data.
+PySpark reads JSON.
+Perform transformations & convert to Parquet.
+Save Parquet to MinIO & load structured data into PostgreSQL.
+Add Logging & Alerts for Failures
+

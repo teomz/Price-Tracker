@@ -1,3 +1,4 @@
+basePath: /api/v1
 definitions:
   models.ErrorResponse:
     properties:
@@ -78,9 +79,13 @@ definitions:
     type: object
   models.SaleUrls:
     properties:
-      Amazon:
-        type: string
       IST:
+        description: '"https://www.instocktrades.com/products/jun247225/flash-by-mark-waid-omnibus-hc-vol-02"'
+        type: string
+      amazon:
+        description: '"https://www.amazon.sg/Flash-Mark-Waid-Omnibus/dp/1779528418/"'
+        type: string
+      upc:
         type: string
     type: object
   models.SuccessDataResponse:
@@ -119,6 +124,10 @@ definitions:
           $ref: '#/definitions/models.Omnibus'
         type: array
     type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:8080
 info:
   contact: {}
 paths:
@@ -316,7 +325,7 @@ paths:
       tags:
       - scraper
   /scraper/getScrapedSale:
-    get:
+    post:
       consumes:
       - application/json
       description: Get sale from scraper by providing the url and platform params
@@ -326,6 +335,14 @@ paths:
         name: TaskUser
         required: true
         type: string
+      - description: URL sources for scraping
+        in: body
+        name: URLS
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.SaleUrls'
+          type: array
       produces:
       - application/json
       responses:
@@ -344,4 +361,7 @@ paths:
       summary: Get sale from scraper
       tags:
       - scraper
+securityDefinitions:
+  BasicAuth:
+    type: basic
 swagger: "2.0"

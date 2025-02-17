@@ -303,7 +303,7 @@ const docTemplate = `{
             }
         },
         "/scraper/getScrapedSale": {
-            "get": {
+            "post": {
                 "description": "Get sale from scraper by providing the url and platform params",
                 "consumes": [
                     "application/json"
@@ -322,6 +322,18 @@ const docTemplate = `{
                         "name": "TaskUser",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "description": "URL sources for scraping",
+                        "name": "URLS",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SaleUrls"
+                            }
+                        }
                     }
                 ],
                 "responses": {
@@ -459,10 +471,15 @@ const docTemplate = `{
         "models.SaleUrls": {
             "type": "object",
             "properties": {
-                "Amazon": {
+                "IST": {
+                    "description": "\"https://www.instocktrades.com/products/jun247225/flash-by-mark-waid-omnibus-hc-vol-02\"",
                     "type": "string"
                 },
-                "IST": {
+                "amazon": {
+                    "description": "\"https://www.amazon.sg/Flash-Mark-Waid-Omnibus/dp/1779528418/\"",
+                    "type": "string"
+                },
+                "upc": {
                     "type": "string"
                 }
             }
@@ -523,14 +540,23 @@ const docTemplate = `{
                 }
             }
         }
+    },
+    "securityDefinitions": {
+        "BasicAuth": {
+            "type": "basic"
+        }
+    },
+    "externalDocs": {
+        "description": "OpenAPI",
+        "url": "https://swagger.io/resources/open-api/"
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "",
-	Host:             "",
-	BasePath:         "",
+	Host:             "localhost:8080",
+	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "",
 	Description:      "",

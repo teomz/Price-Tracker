@@ -63,12 +63,9 @@ type SuccessSaleResponse struct {
 }
 
 type SaleUrls struct {
-	Amazon string `json:"Amazon"`
-	IST    string `json:"IST"`
-}
-
-type SaleParams struct {
-	Data []SaleUrls `json:"saleurls"`
+	UPC    string `json:upc`
+	Amazon string `json:"amazon"` // "https://www.amazon.sg/Flash-Mark-Waid-Omnibus/dp/1779528418/"
+	IST    string `json:"IST"`    // "https://www.instocktrades.com/products/jun247225/flash-by-mark-waid-omnibus-hc-vol-02"
 }
 
 func (o Omnibus) String() string {

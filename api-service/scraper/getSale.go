@@ -1,7 +1,6 @@
 package scraper
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,8 +18,7 @@ import (
 )
 
 var (
-	wgSale   sync.WaitGroup
-	saleData = make(map[string]*models.Sale)
+	wgSale sync.WaitGroup
 )
 
 // getScrapedSale godoc
@@ -30,11 +28,11 @@ var (
 // @Accept json
 // @Produce json
 // @Param TaskUser query string true "User calling the API"
-// @Param URLS query models.SaleParams true "URL sources for scraping"
+// @Param URLS body []models.SaleUrls true "URL sources for scraping"
 // @Success 200 {object} models.SuccessSaleResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /scraper/getScrapedSale [get]
+// @Router /scraper/getScrapedSale [post]
 func getScrapedSale(g *gin.Context) {
 
 	var saleList []models.Sale // Store all completed JSON objects
@@ -47,12 +45,9 @@ func getScrapedSale(g *gin.Context) {
 		return
 	}
 
-	jsonList := g.DefaultQuery("URLS", "defaultValues")
-
 	var urlList []models.SaleUrls
 
-	err := json.Unmarshal([]byte(jsonList), &urlList)
-	if err != nil {
+	if err := g.ShouldBindJSON(&urlList); err != nil {
 		g.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Action: "getScrapedSale",
 			Error:  err.Error(),
@@ -66,29 +61,29 @@ func getScrapedSale(g *gin.Context) {
 
 		for sale := range resultChan {
 			saleList = append(saleList, sale) // Collect results
-			wg.Done()
+			wgSale.Done()
 		}
 
 	}()
 
 	for i, url := range urlList {
-		if i%20 == 0 {
-			time.Sleep(2)
-		} else {
-			if url.Amazon != "" {
-				wgSale.Add(1)
-				go getAmazonSale(url.Amazon, resultChan)
-			}
-			if url.IST != "" {
-				wgSale.Add(1)
-				go getISTSale(url.IST, resultChan)
-			}
 
+		if i%20 == 0 && i != 0 {
+			fmt.Println("Sleep...........")
+			time.Sleep(2)
+		}
+		if url.Amazon != "" {
+			wgSale.Add(1)
+			go getAmazonSale(url.Amazon, resultChan, url.UPC)
+		}
+		if url.IST != "" {
+			wgSale.Add(1)
+			go getISTSale(url.IST, resultChan, url.UPC)
 		}
 
 	}
 
-	wg.Wait()
+	wgSale.Wait()
 	close(resultChan)
 
 	// If scraping is successful, return the data
@@ -98,13 +93,15 @@ func getScrapedSale(g *gin.Context) {
 	})
 }
 
-func getAmazonSale(url string, resultChan chan models.Sale) {
+func getAmazonSale(url string, resultChan chan models.Sale, upc string) {
+	log.Println("Scraping Amazon link")
 
 	var record models.Sale
 	foundFirst := false
 
 	record.Date = time.Now().Format("2006-01-02")
 	record.Platform = "Amazon"
+	record.UPC = upc
 
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
@@ -119,7 +116,6 @@ func getAmazonSale(url string, resultChan chan models.Sale) {
 
 			// Construct the full price
 			Price := fmt.Sprintf("%s.%s", strings.Replace(priceWhole, ".", "", 1), strings.Replace(priceFraction, ".", "", 1))
-			fmt.Println(Price)
 			sale, err := strconv.ParseFloat(Price, 32)
 			if err != nil {
 				record.Sale = float32(-1)
@@ -133,6 +129,7 @@ func getAmazonSale(url string, resultChan chan models.Sale) {
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
+		log.Println("error in amazon")
 		// Log the error details
 		record.Sale = float32(-1)
 	})
@@ -143,16 +140,19 @@ func getAmazonSale(url string, resultChan chan models.Sale) {
 
 }
 
-func getISTSale(url string, resultChan chan models.Sale) {
+func getISTSale(url string, resultChan chan models.Sale, upc string) {
+
+	log.Println("Scraping IST link")
 
 	var record models.Sale
 
 	record.Date = time.Now().Format("2006-01-02")
+	record.UPC = upc
 	record.Platform = "IST"
 
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
-		colly.AllowedDomains("www.amazon.sg", "amazon.sg"),
+		colly.AllowedDomains("www.instocktrades.com", "instocktrades.com"),
 		colly.MaxDepth(1),
 	)
 
@@ -175,6 +175,8 @@ func getISTSale(url string, resultChan chan models.Sale) {
 
 	c.OnError(func(r *colly.Response, err error) {
 		// Log the error details
+		log.Println("error in ist")
+
 		record.Sale = float32(-1)
 	})
 

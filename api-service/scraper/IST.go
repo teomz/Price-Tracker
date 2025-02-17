@@ -135,7 +135,7 @@ func downloadImage(imageURL string) (string, error) {
 	params.Add("BucketNameKey", os.Getenv("SCRAPER_BUCKET"))
 
 	// Construct the final URL with query parameters
-	baseURL := "http://localhost:8080/api/v1/minio/uploadImage"
+	baseURL := "http://api-service:8080/api/v1/minio/uploadImage"
 	finalURL := baseURL + "?" + params.Encode()
 
 	// Make HTTP POST request to upload image
