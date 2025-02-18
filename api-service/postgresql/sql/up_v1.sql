@@ -4,12 +4,11 @@ CREATE TABLE IF NOT EXISTS omnibus (
 		price REAL NOT NULL,
 		version VARCHAR(20) NOT NULL,
 		pagecount INT NOT NULL,
-		datecreated TIMESTAMP,
+		datecreated DATE,
 		publisher TEXT NOT NULL,
 		imgpath TEXT,
 		isturl TEXT,
 		amazonurl TEXT,
-		cgnurl TEXT,
 		lastupdated TIMESTAMP,
 		status TEXT,
         PRIMARY KEY (upc)  

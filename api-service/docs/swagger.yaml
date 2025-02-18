@@ -46,17 +46,6 @@ definitions:
         description: Standard or DM version
         type: string
     type: object
-  models.QueryRequest:
-    properties:
-      query:
-        type: string
-      values:
-        items: {}
-        type: array
-    required:
-    - query
-    - values
-    type: object
   models.Sale:
     properties:
       LastUpdated:
@@ -255,6 +244,41 @@ paths:
       summary: Upload a file to MinIO
       tags:
       - minio
+  /postgresql/getInfoByDate:
+    get:
+      consumes:
+      - application/json
+      description: Return an array of upc from the PostgreSQL database filtered by
+        date
+      parameters:
+      - description: User calling the API
+        in: query
+        name: TaskUser
+        required: true
+        type: string
+      - description: Date of item creation YYYY-MM-DD
+        in: query
+        name: Date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: get data by date
+      tags:
+      - postgres
   /postgresql/uploadInfo:
     post:
       consumes:
@@ -262,6 +286,7 @@ paths:
       description: Upload an array of items (Omnibus) to the PostgreSQL database
       parameters:
       - description: User calling the API
+        example: '"user123"'
         in: query
         name: TaskUser
         required: true
@@ -271,7 +296,8 @@ paths:
         name: Query
         required: true
         schema:
-          $ref: '#/definitions/models.QueryRequest'
+          items: {}
+          type: array
       produces:
       - application/json
       responses:

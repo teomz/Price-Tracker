@@ -227,7 +227,7 @@ func scrapeISTInfo(source string, upcChan chan string, resultChan chan models.Om
 		// Scrape pricing info (Price)
 		scrapeISTPricingInfo(e, product)
 
-		product.DateCreated = time.Now().Format("2006-01-02")
+		product.DateCreated = time.Now()
 
 		if product.Version == "Standard" {
 			mutex.Lock()

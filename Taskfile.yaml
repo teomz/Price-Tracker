@@ -18,10 +18,18 @@ tasks:
 
 
   swag:
+    desc: "swag init api-service from main folder"
+    cmds:
+    - cd api-service && swag init
+      # - chmod +x ./api-service/init/swag.sh
+      # - bash ./api-service/init/swag.sh
 
-      cmds:
-      - chmod +x ./api-service/init/swag.sh
-      - bash ./api-service/init/swag.sh
+  requirements:
+    desc: "Add requirements.txt to airflow using pipreqs"
+    cmds:
+    - pipreqs --force ./airflow
+      # - chmod +x ./api-service/init/swag.sh
+      # - bash ./api-service/init/swag.sh
 
 
 

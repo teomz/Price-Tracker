@@ -206,7 +206,7 @@ func scrapeISTInfo(source string, upcChan chan string) {
 		// Scrape pricing info (Price)
 		scrapeISTPricingInfo(e, product)
 
-		product.DateCreated = time.Now().Format("2006-01-02")
+		product.DateCreated = time.Now()
 
 		mutex.Lock()
 		omnibusData[product.UPC] = product // Store in map

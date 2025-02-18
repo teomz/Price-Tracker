@@ -198,6 +198,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/postgresql/getInfoByDate": {
+            "get": {
+                "description": "Return an array of upc from the PostgreSQL database filtered by date",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "postgres"
+                ],
+                "summary": "get data by date",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User calling the API",
+                        "name": "TaskUser",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Date of item creation YYYY-MM-DD",
+                        "name": "Date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessDataResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/postgresql/uploadInfo": {
             "post": {
                 "description": "Upload an array of items (Omnibus) to the PostgreSQL database",
@@ -214,6 +265,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "\"user123\"",
                         "description": "User calling the API",
                         "name": "TaskUser",
                         "in": "query",
@@ -225,7 +277,8 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.QueryRequest"
+                            "type": "array",
+                            "items": {}
                         }
                     }
                 ],
@@ -421,22 +474,6 @@ const docTemplate = `{
                 "version": {
                     "description": "Standard or DM version",
                     "type": "string"
-                }
-            }
-        },
-        "models.QueryRequest": {
-            "type": "object",
-            "required": [
-                "query",
-                "values"
-            ],
-            "properties": {
-                "query": {
-                    "type": "string"
-                },
-                "values": {
-                    "type": "array",
-                    "items": {}
                 }
             }
         },

@@ -2,9 +2,11 @@ package postgresql
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/teomz/Price-Tracker/api-service/models"
@@ -17,8 +19,8 @@ import (
 // @Tags postgres
 // @Accept json
 // @Produce json
-// @Param TaskUser query string true "User calling the API"
-// @Param Query body models.QueryRequest true "Array of items to upload"
+// @Param TaskUser query string true "User calling the API" example("user123")
+// @Param Query body []interface{} true "Array of items to upload" example()
 // @Success 200 {object} models.SuccessDataResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
@@ -56,7 +58,7 @@ func uploadInfo(g *gin.Context) {
 		return
 	}
 
-	var req models.QueryRequest
+	var req []map[string]interface{}
 
 	// Bind JSON request
 	if err := g.ShouldBindJSON(&req); err != nil {
@@ -67,8 +69,20 @@ func uploadInfo(g *gin.Context) {
 		return
 	}
 
+	query, values, err := buildInsertQuery(req, "omnibus")
+
+	fmt.Println(values)
+
+	if err != nil {
+		g.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Action: "uploadInfo",
+			Error:  err.Error(),
+		})
+		return
+	}
+
 	// Validate query
-	if err := utilities.ValidateQuery(req.Query, allowedQueryTypes, allowedTables); err != nil {
+	if err := utilities.ValidateQuery(query, allowedQueryTypes, allowedTables); err != nil {
 		g.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Action: "uploadInfo",
 			Error:  err.Error(),
@@ -77,7 +91,7 @@ func uploadInfo(g *gin.Context) {
 	}
 
 	// Execute the query and handle any errors
-	rows, err := db.pool.Query(context.Background(), req.Query, req.Values...)
+	rows, err := db.pool.Query(context.Background(), query, values...)
 	if err != nil {
 		g.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Action: "uploadInfo",
@@ -108,39 +122,57 @@ func uploadInfo(g *gin.Context) {
 	})
 }
 
-// func contains(ids []string, item string) bool {
-// 	for _, id := range ids {
-// 		if id == item {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
+func buildInsertQuery(item []map[string]interface{}, platform string) (string, []interface{}, error) {
+	var queryBuilder strings.Builder
 
-// func buildInsertQuery(omnibus []models.Omnibus) (string, []interface{}) {
-// 	var queryBuilder strings.Builder
-// 	queryBuilder.WriteString(`
-// 		INSERT INTO omnibus (UPC, code, name, price, version, pagecount, datecreated, publisher, imgpath, isturl, amazonurl, cgnurl, lastupdated, status)
-// 		VALUES
-// 	`)
-// 	values := []interface{}{}
+	switch platform {
+	case "omnibus":
 
-// 	for i, row := range omnibus {
-// 		if i > 0 {
-// 			queryBuilder.WriteString(",")
-// 		}
-// 		queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
-// 			len(values)+1, len(values)+2, len(values)+3, len(values)+4, len(values)+5, len(values)+6, len(values)+7,
-// 			len(values)+8, len(values)+9, len(values)+10, len(values)+11, len(values)+12, len(values)+13, len(values)+14))
-// 		values = append(values, row.UPC, row.Code, row.Name, row.Price, row.Version, row.PageCount, row.DateCreated, row.Publisher,
-// 			row.ImgPath, row.ISTUrl, row.AmazonUrl, row.CGNUrl, row.LastUpdated, row.Status)
-// 	}
+		queryBuilder.WriteString(`
+		INSERT INTO omnibus (
+			upc, name, price, version, pagecount, datecreated, publisher, imgpath, 
+			isturl, amazonurl, lastupdated, status
+		) 
+		VALUES
+		`)
 
-// 	queryBuilder.WriteString(`
-// 		ON CONFLICT (UPC, CODE)
-// 		DO NOTHING
-// 		RETURNING UPC;
-// 	`)
+		values := []interface{}{}
 
-// 	return queryBuilder.String(), values
-// }
+		for i, row := range item {
+			omnibus := models.Omnibus{
+				UPC:       row["upc"].(string),
+				Name:      row["name"].(string),
+				Price:     float32(row["price"].(float64)),
+				Version:   row["version"].(string),
+				PageCount: int(row["pagecount"].(float64)),
+				Publisher: row["publisher"].(string),
+				ImgPath:   row["imgpath"].(string),
+				ISTUrl:    row["isturl"].(string),
+				AmazonUrl: row["amazonurl"].(string),
+				Status:    row["status"].(string),
+			}
+
+			if i > 0 {
+				queryBuilder.WriteString(",")
+			}
+			queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+				len(values)+1, len(values)+2, len(values)+3, len(values)+4, len(values)+5, len(values)+6, len(values)+7,
+				len(values)+8, len(values)+9, len(values)+10, len(values)+11, len(values)+12))
+
+			// Append the values to the values slice
+			values = append(values, omnibus.UPC, omnibus.Name, omnibus.Price, omnibus.Version, omnibus.PageCount, omnibus.DateCreated,
+				omnibus.Publisher, omnibus.ImgPath, omnibus.ISTUrl, omnibus.AmazonUrl, omnibus.LastUpdated, omnibus.Status)
+		}
+
+		queryBuilder.WriteString(`
+			ON CONFLICT (upc)
+			DO NOTHING
+			RETURNING upc;
+		`)
+
+		return queryBuilder.String(), values, nil
+
+	default:
+		return "", []interface{}{}, fmt.Errorf("Empty List")
+	}
+}

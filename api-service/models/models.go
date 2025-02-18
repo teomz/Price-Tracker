@@ -11,7 +11,7 @@ type Omnibus struct {
 	Price       float32   `json:"price"`        // Price of the omnibus
 	Version     string    `json:"version"`      // Standard or DM version
 	PageCount   int       `json:"pagecount"`    // Total number of pages
-	DateCreated string    `json:"releaseddate"` // Creation date
+	DateCreated time.Time `json:"releaseddate"` // Creation date
 	Publisher   string    `json:"publisher"`    // Publisher of the omnibus
 	ImgPath     string    `json:"imgpath"`      // Path to the image file
 	ISTUrl      string    `json:"isturl"`       // URL to IST
