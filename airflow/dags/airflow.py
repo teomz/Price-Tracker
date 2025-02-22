@@ -175,7 +175,9 @@ def weekly_update_with_new_release():
 
             
 
-    infoList = fetch_info_data() >> infoList = clean_duplicates(infoList) >> upload_minio_postgres(infoList)
+    infoList = fetch_info_data() 
+    infoList = clean_duplicates(infoList) 
+    upload_minio_postgres(infoList)
 
 
 
