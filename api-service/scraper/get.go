@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"math/rand"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gocolly/colly"
 	"github.com/teomz/Price-Tracker/api-service/models"
@@ -19,6 +21,8 @@ var (
 	omnibusData = make(map[string]*models.Omnibus) // Shared storage for Omnibus structs
 	mutex       = sync.Mutex{}                     // Prevents race conditions
 	wg          sync.WaitGroup                     // WaitGroup
+	retry       = sync.Mutex{}                     // Mutex to protect shared resources
+	retryCheck  = make(map[string]int)
 )
 
 // getScrapedInfo godoc
@@ -37,6 +41,7 @@ func getScrapedInfo(g *gin.Context) {
 	// platform := g.DefaultQuery("Platform", "default_platform")
 	// var err error
 	var omnibusList []models.Omnibus // Store all completed JSON objects
+	worker := 4
 
 	if err := utilities.CheckUser(g, os.Getenv("AIRFLOW_USER")); err != nil {
 		g.JSON(http.StatusBadRequest, models.ErrorResponse{
@@ -56,13 +61,23 @@ func getScrapedInfo(g *gin.Context) {
 		return
 	}
 
-	upcChan := make(chan string, 20)            // UPCs from IST
-	resultChan := make(chan models.Omnibus, 20) // Completed Omnibus structs
+	upcChan := make(chan string, worker)            // UPCs from IST
+	resultChan := make(chan models.Omnibus, worker) // Completed Omnibus structs
+	successChan := make(chan bool, worker)          // Completed Omnibus structs
 
 	// Start amazon worker in a goroutine
 	go func() {
+		counter := 0
 		for upc := range upcChan {
-			go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan)
+			counter++
+			if counter <= worker {
+				// For the first two items, just start them directly
+				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
+			} else {
+				// Wait for one of the previous workers to finish before starting a new one
+				<-successChan
+				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
+			}
 		}
 	}()
 
@@ -91,17 +106,28 @@ func getScrapedInfo(g *gin.Context) {
 	})
 }
 
-func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus) {
+func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus, successChan chan bool) {
+	const maxRetries = 55
 
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
 		colly.AllowedDomains("www.amazon.sg", "amazon.sg"),
-		colly.MaxDepth(1),
+		colly.MaxDepth(5),
 	)
+
+	c.OnRequest(func(r *colly.Request) {
+		log.Println("Visiting", r.URL)
+	})
+
+	// This will run after a page is visited and the source is fetched
+	c.OnResponse(func(r *colly.Response) {
+		log.Println("Successfully fetched:", r.Request.URL)
+	})
 
 	var substring string
 	foundFirst := false
 	c.OnHTML("a.a-link-normal", func(e *colly.HTMLElement) {
+		log.Println("Found Link")
 		// Check if we already found the first match
 		if !foundFirst {
 			// Extract href attribute value
@@ -119,33 +145,54 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus)
 			}
 			mutex.Unlock()
 			foundFirst = true
+			successChan <- true
 
 		}
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
-		// Log the error details
-		mutex.Lock()
-		if omnibus, exists := omnibusData[upc]; exists {
-			omnibus.AmazonUrl = "Error"
-			resultChan <- *omnibus // Send completed Omnibus data
+		log.Println("Error")
+		retry.Lock()
+		retryCount, exists := retryCheck[upc]
+		if !exists {
+			retryCheck[upc] = 1
+			retryCount = 1
 		} else {
-			// Optionally handle the case when omnibus data is not found
+			retryCount++
+			retryCheck[upc] = retryCount
 		}
-		mutex.Unlock()
-		foundFirst = true
+		retry.Unlock()
+		// Log the error details
+		if retryCount <= maxRetries {
+			randomSleepDuration := time.Duration(rand.Intn(6)+5) * time.Second
+			time.Sleep(randomSleepDuration)
+			log.Printf("Retrying %s (attempt %d/%d)", source, retryCount, maxRetries)
+			go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
+		} else {
+			mutex.Lock()
+			if omnibus, exists := omnibusData[upc]; exists {
+				omnibus.AmazonUrl = err.Error()
+				resultChan <- *omnibus // Send completed Omnibus data
+			}
+			mutex.Unlock()
+			foundFirst = true
+			successChan <- true
+		}
 	})
 
 	c.OnScraped(func(r *colly.Response) {
+		log.Println("OnScraped")
 		if !foundFirst {
 			// Log the error details
 			mutex.Lock()
 			if omnibus, exists := omnibusData[upc]; exists {
+				omnibus.AmazonUrl = "Empty"
 				resultChan <- *omnibus // Send completed Omnibus data
 			} else {
 			}
 			mutex.Unlock()
 			foundFirst = true
+			successChan <- true
 		}
 
 	})
