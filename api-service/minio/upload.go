@@ -54,8 +54,8 @@ func uploadImage(g *gin.Context) {
 		return
 	}
 
-	extList := []string{"png", "jpeg"}
-	mimeList := []string{"image/png", "image/jpeg"}
+	extList := []string{"png", "jpeg", "parquet"}
+	mimeList := []string{"image/png", "image/jpeg", "application/octet-stream", "application/parquet"}
 	if _, err := utilities.Validate_File(g, extList, mimeList); err != nil {
 		g.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Action: "UploadImage",

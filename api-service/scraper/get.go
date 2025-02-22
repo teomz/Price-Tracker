@@ -101,7 +101,7 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus)
 
 	var substring string
 	foundFirst := false
-	c.OnHTML("a.a-link-normal.s-underline-text.s-underline-link-text.s-link-style.a-text-normal[href]", func(e *colly.HTMLElement) {
+	c.OnHTML("a.a-link-normal", func(e *colly.HTMLElement) {
 		// Check if we already found the first match
 		if !foundFirst {
 			// Extract href attribute value

@@ -146,6 +146,7 @@ services:
       - AIRFLOW_WWW_PASSWORD=${AIRFLOW_WWW_PASSWORD}
       - AIRFLOW_USER=${AIRFLOW_USER}
       - AIRFLOW__LOGGING__BASE_LOG_FOLDER=/opt/airflow/logs
+      - TZ=Asia/Singapore  
     logging:
       options:
         max-size: 10m
@@ -185,8 +186,9 @@ services:
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_WEBSERVER}
       - AIRFLOW_USER=${AIRFLOW_USER}
       - AIRFLOW__LOGGING__BASE_LOG_FOLDER=/opt/airflow/logs
+      - TZ=Asia/Singapore  
 
-    command: bash -c "pip install --no-cache-dir -r /opt/airflow/requirements.txt && airflow db migrate && airflow scheduler"
+    command: bash -c "python3 -m pip install --upgrade pip && pip install --no-cache-dir -r /opt/airflow/requirements.txt && airflow db migrate && airflow scheduler"
     networks:
       - api
 
