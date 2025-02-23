@@ -13,6 +13,7 @@ services:
     volumes:
       - ./postgres_data:/var/lib/postgresql/data  # Mount the volume to the container
       - ./api-service/postgresql/sql/up_v1.sql:/docker-entrypoint-initdb.d/up_v1.sql
+    # command: psql -U ${POSTGRES_USER} -c "CREATE DATABASE airflow;"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
       interval: 30s

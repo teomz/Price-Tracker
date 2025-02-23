@@ -3,6 +3,7 @@ package scraper
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
@@ -18,7 +19,9 @@ import (
 )
 
 var (
-	wgSale sync.WaitGroup
+	wgSale         sync.WaitGroup
+	saleRetry      = sync.Mutex{} // Mutex to protect shared resources
+	saleRetryCheck = make(map[string]int)
 )
 
 // getScrapedSale godoc
@@ -27,7 +30,7 @@ var (
 // @Tags scraper
 // @Accept json
 // @Produce json
-// @Param TaskUser query string true "User calling the API"
+// @Param TaskUser query string true "User calling the API" example("user123")
 // @Param URLS body []models.SaleUrls true "URL sources for scraping"
 // @Success 200 {object} models.SuccessSaleResponse
 // @Failure 400 {object} models.ErrorResponse
@@ -55,7 +58,10 @@ func getScrapedSale(g *gin.Context) {
 		return
 	}
 
-	resultChan := make(chan models.Sale, 20) // Completed Sale structs
+	worker := 4
+	resultChan := make(chan models.Sale, worker) // Completed Sale structs
+	amazonChan := make(chan models.SaleUrls, worker)
+	successChan := make(chan bool, worker) // Completed Omnibus structs
 
 	go func() {
 
@@ -66,15 +72,15 @@ func getScrapedSale(g *gin.Context) {
 
 	}()
 
-	for i, url := range urlList {
+	for _, url := range urlList {
 
-		if i%20 == 0 && i != 0 {
-			fmt.Println("Sleep...........")
-			time.Sleep(2)
-		}
+		// if i%20 == 0 && i != 0 {
+		// 	fmt.Println("Sleep...........")
+		// 	time.Sleep(2)
+		// }
 		if url.Amazon != "" {
 			wgSale.Add(1)
-			go getAmazonSale(url.Amazon, resultChan, url.UPC)
+			amazonChan <- url
 		}
 		if url.IST != "" {
 			wgSale.Add(1)
@@ -82,6 +88,22 @@ func getScrapedSale(g *gin.Context) {
 		}
 
 	}
+
+	go func() {
+		counter := 0
+		for amazon := range amazonChan {
+			counter++
+			if counter <= worker/2 {
+				// For the first two items, just start them directly
+				go getAmazonSale(amazon.Amazon, resultChan, amazon.UPC, successChan)
+			} else {
+				// Wait for one of the previous workers to finish before starting a new one
+				<-successChan
+				go getAmazonSale(amazon.Amazon, resultChan, amazon.UPC, successChan)
+			}
+		}
+
+	}()
 
 	wgSale.Wait()
 	close(resultChan)
@@ -93,11 +115,12 @@ func getScrapedSale(g *gin.Context) {
 	})
 }
 
-func getAmazonSale(url string, resultChan chan models.Sale, upc string) {
-	log.Println("Scraping Amazon link")
+func getAmazonSale(url string, resultChan chan models.Sale, upc string, successChan chan bool) {
+	log.Println("Scraping Amazon link:", url)
 
 	var record models.Sale
 	foundFirst := false
+	maxRetries := 50
 
 	record.Date = time.Now().Format("2006-01-02")
 	record.Platform = "Amazon"
@@ -109,14 +132,24 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string) {
 		colly.MaxDepth(1),
 	)
 
+	c.OnRequest(func(r *colly.Request) {
+		log.Println("Visiting", r.URL)
+	})
+
+	// This will run after a page is visited and the source is fetched
+	c.OnResponse(func(r *colly.Response) {
+		log.Println("Successfully fetched:", r.Request.URL)
+		log.Println(r.StatusCode)
+	})
+
 	c.OnHTML("span.a-price", func(e *colly.HTMLElement) {
 		if !foundFirst {
 			priceWhole := e.ChildText("span.a-price-whole")
 			priceFraction := e.ChildText("span.a-price-fraction")
-
 			// Construct the full price
-			Price := fmt.Sprintf("%s.%s", strings.Replace(priceWhole, ".", "", 1), strings.Replace(priceFraction, ".", "", 1))
-			sale, err := strconv.ParseFloat(Price, 32)
+			price := fmt.Sprintf("%s.%s", strings.Replace(priceWhole, ".", "", 1), strings.Replace(priceFraction, ".", "", 1))
+			log.Printf("Price Found for %s : %s", url, price)
+			sale, err := strconv.ParseFloat(price, 32)
 			if err != nil {
 				record.Sale = float32(-1)
 			} else {
@@ -124,20 +157,58 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string) {
 			}
 			//fmt.Println(record.Sale)
 			foundFirst = true
+			resultChan <- *&record
+			successChan <- true
 		}
 
 	})
 
-	c.OnError(func(r *colly.Response, err error) {
-		log.Println("error in amazon")
-		// Log the error details
-		record.Sale = float32(-1)
+	c.OnHTML("title", func(e *colly.HTMLElement) {
+		titleText := e.Text
+		if strings.Contains(titleText, "Server Busy") {
+			log.Println("Detected 'Server Busy' page. Retrying...")
+
+			saleRetry.Lock()
+			retryCount, exists := saleRetryCheck[upc]
+			if !exists {
+				saleRetryCheck[upc] = 1
+				retryCount = 1
+			} else {
+				retryCount++
+				saleRetryCheck[upc] = retryCount
+			}
+			saleRetry.Unlock()
+
+			if retryCount <= maxRetries {
+				randomSleepDuration := time.Duration(rand.Intn(6)+5) * time.Second
+				time.Sleep(randomSleepDuration)
+				log.Printf("Retrying %s (attempt %d/%d)", url, retryCount, maxRetries)
+				go getAmazonSale(url, resultChan, upc, successChan)
+			}
+		}
 	})
 
+	c.OnError(func(r *colly.Response, err error) {
+		log.Println(err.Error())
+		// Log the error details
+		record.Sale = float32(-1)
+		resultChan <- *&record
+		successChan <- true
+	})
+
+	// c.OnResponse(func(r *colly.Response) {
+	// 	if r.StatusCode == 503 {
+	// 		log.Println("Amazon returned 503 Service Unavailable, retrying...")
+	// 		for attempts := 1; attempts <= maxRetries; attempts++ {
+	// 			randomSleepDuration := time.Duration(rand.Intn(6)+5) * time.Second
+	// 			time.Sleep(randomSleepDuration)
+	// 			log.Printf("Error scraping Amazon (attempt %d/%d): %v\n", attempts+1, maxRetries)
+	// 			c.Visit(url)
+	// 		}
+	// 	}
+	// })
+
 	c.Visit(url)
-
-	resultChan <- *&record
-
 }
 
 func getISTSale(url string, resultChan chan models.Sale, upc string) {

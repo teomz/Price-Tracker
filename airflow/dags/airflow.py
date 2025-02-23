@@ -23,37 +23,43 @@ load_dotenv()
 TASKUSER = os.getenv("AIRFLOW_USER")
 SGT = pendulum.timezone("Asia/Singapore")
 
+URL = "https://www.instocktrades.com/newreleases"
+
 
 logging.basicConfig(level=logging.INFO)
 
-@dag(schedule_interval="0 2 * * 2", start_date=days_ago(1), catchup=False)
+@dag(schedule_interval="0 2 * * 2", start_date=days_ago(1), catchup=True)
 def weekly_update_with_new_release():
+
+    vers = 1
     
     @task()
-    def fetch_info_data() -> List[Omnibus]:
+    def fetch_info_data(source) -> List[Omnibus]:
         logging.info("Fetching new release info from the scraper API...")
 
         params = {
             "TaskUser": TASKUSER,
-            "URL": "https://www.instocktrades.com/newreleases",
+            "URL": source,
         }
 
         try:
             response = requests.get("http://api-service:8080/api/v1/scraper/getScrapedInfo", params=params)
             response.raise_for_status()  
             data = response.json()['data']
+            logging.info(f"InfoList Length: {len(data)}") 
             return data
 
         except requests.exceptions.RequestException as e:
             logging.error("Error fetching data: %s", response.json())
 
-        logging.info("InfoList Lenght:", len(infoList))
 
     @task()
     def clean_duplicates(infoList: List[Omnibus]) -> List[Omnibus]:
         logging.info("Removing the duplicates")
 
         formatted_date = (datetime.now() - timedelta(weeks=1)).strftime("%Y-%m-%d")
+        # current_date = datetime.now().strftime("%Y-%m-%d")
+
 
         params = {
             "TaskUser": TASKUSER,
@@ -64,9 +70,11 @@ def weekly_update_with_new_release():
             response = requests.get("http://api-service:8080/api/v1/postgresql/getInfoByDate", params=params)
             response.raise_for_status()  
             duplicatesList = response.json()
+            if duplicatesList is not None:
+                logging.info(f"duplicatesList Length: {len(duplicatesList)}") 
 
         except requests.exceptions.RequestException as e:
-            logging.error("Error fetching data: %s", duplicatesList)
+            logging.error("Error fetching data: %s", e)
 
         
         try:
@@ -74,7 +82,7 @@ def weekly_update_with_new_release():
         except Exception as e:
             logging.info("No duplicates")
         
-        logging.info("InfoList Lenght:", len(infoList))
+        logging.info(f"InfoList Length: {len(infoList)}") 
 
         return infoList
 
@@ -159,7 +167,7 @@ def weekly_update_with_new_release():
         # Use ThreadPoolExecutor to upload chunks asynchronously
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = []
-            for chunk_number, chunk in enumerate(chunked_omnibus, start=1):
+            for chunk_number, chunk in enumerate(chunked_omnibus, start=vers):
                 df = pd.DataFrame(chunk) 
                 parquet_buffer = io.BytesIO()
                 df.to_parquet(parquet_buffer, engine='pyarrow')
@@ -173,11 +181,11 @@ def weekly_update_with_new_release():
                 future.result() 
         
 
-            
 
-    infoList = fetch_info_data() 
+    infoList = fetch_info_data(URL) 
     infoList = clean_duplicates(infoList) 
     upload_minio_postgres(infoList)
+
 
 
 

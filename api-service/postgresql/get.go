@@ -78,7 +78,7 @@ func getInfoByDate(g *gin.Context) {
 		return
 	}
 
-	query := "SELECT * FROM omnibus WHERE datecreated = $1"
+	query := "SELECT upc FROM omnibus WHERE datecreated = $1"
 
 	// Validate query
 	if err := utilities.ValidateQuery(query, allowedQueryTypes, allowedTables); err != nil {

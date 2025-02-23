@@ -371,6 +371,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "\"user123\"",
                         "description": "User calling the API",
                         "name": "TaskUser",
                         "in": "query",

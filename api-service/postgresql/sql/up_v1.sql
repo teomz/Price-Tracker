@@ -22,4 +22,5 @@ CREATE TABLE IF NOT EXISTS omnibus (
     platform TEXT NOT NULL,        -- Platform (e.g., IST, Amazon)
     percent INT NOT NULL,          -- Discount percentage
     PRIMARY KEY (date, upc, platform)    -- Composite primary key
-);
+	);
+

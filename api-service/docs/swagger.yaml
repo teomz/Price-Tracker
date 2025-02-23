@@ -357,6 +357,7 @@ paths:
       description: Get sale from scraper by providing the url and platform params
       parameters:
       - description: User calling the API
+        example: '"user123"'
         in: query
         name: TaskUser
         required: true

@@ -1,10 +1,13 @@
 package scraper
 
 import (
+	"fmt"
 	"html"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +26,8 @@ var (
 	wg          sync.WaitGroup                     // WaitGroup
 	retry       = sync.Mutex{}                     // Mutex to protect shared resources
 	retryCheck  = make(map[string]int)
+	visited     = make(map[string]bool)
+	visitng     = sync.Mutex{}
 )
 
 // getScrapedInfo godoc
@@ -128,6 +133,7 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 	foundFirst := false
 	c.OnHTML("a.a-link-normal", func(e *colly.HTMLElement) {
 		log.Println("Found Link")
+		htmlText := e.Text
 		// Check if we already found the first match
 		if !foundFirst {
 			// Extract href attribute value
@@ -139,6 +145,11 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 			amazonurl := "https://www.amazon.sg" + substring
 			mutex.Lock()
 			if omnibus, exists := omnibusData[upc]; exists {
+				if htmlText == "Visit the help section" || strings.Contains(substring, "gp/help/customer/") {
+					omnibus.AmazonUrl = ""
+				} else {
+					omnibus.AmazonUrl = amazonurl
+				}
 				omnibus.AmazonUrl = amazonurl
 				resultChan <- *omnibus // Send completed Omnibus data
 			} else {
@@ -186,7 +197,7 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 			// Log the error details
 			mutex.Lock()
 			if omnibus, exists := omnibusData[upc]; exists {
-				omnibus.AmazonUrl = "Empty"
+				omnibus.AmazonUrl = ""
 				resultChan <- *omnibus // Send completed Omnibus data
 			} else {
 			}
@@ -202,14 +213,19 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 }
 
 func scrapeIST(source string, upcChan chan string, resultChan chan models.Omnibus) {
+
+	//visited[source+"?pg=1"] = true
+	pgcount := 1
+
 	c := colly.NewCollector(
 
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
 		colly.AllowedDomains("www.instocktrades.com", "instocktrades.com"),
-		colly.Async(true),
 	)
+	// 	colly.Async(true),
+	// )
 
-	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 5})
+	// c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 5})
 
 	// this will get the 2nd link from source
 	c.OnHTML("div[class=title]", func(e *colly.HTMLElement) {
@@ -220,14 +236,30 @@ func scrapeIST(source string, upcChan chan string, resultChan chan models.Omnibu
 			(strings.Contains(name, "Omni") && strings.Contains(name, "Conan")) {
 			wg.Add(1)
 			link := e.Request.AbsoluteURL(e.ChildAttr("a", "href"))
+			log.Println(link)
 			go scrapeISTInfo(link, upcChan, resultChan)
 		}
 	})
 
 	c.OnHTML("a.btn.hotaction", func(e *colly.HTMLElement) {
+		// link := e.Request.AbsoluteURL(e.Attr("href"))
+		// visitng.Lock()
+		// if _, exists := visited[link]; !exists {
+		// 	visited[link] = true
+		// 	visitng.Unlock()
+		// 	c.Visit(link)
+		// } else {
+		// 	visitng.Unlock()
+		// }
 		link := e.Request.AbsoluteURL(e.Attr("href"))
-		c.Visit(link)
-
+		parsedURL, _ := url.Parse(link)
+		pageParam := parsedURL.Query().Get("pg")
+		pageNumber, _ := strconv.Atoi(pageParam)
+		if pageNumber > pgcount {
+			fmt.Println(pgcount)
+			pgcount++
+			c.Visit(link) // Visit the next page
+		}
 	})
 	c.Visit(source)
 	c.Wait()
@@ -262,7 +294,9 @@ func scrapeISTInfo(source string, upcChan chan string, resultChan chan models.Om
 		product.ISTUrl = e.Request.URL.String()
 		product.Name = e.ChildText("h1")
 
-		if strings.Contains(strings.ToLower(product.Name), "dm") {
+		if strings.Contains(strings.ToLower(product.Name), " dm ") {
+			product.Version = "DM"
+		} else if strings.Contains(strings.ToLower(product.Name), "direct market") {
 			product.Version = "DM"
 		} else {
 			product.Version = "Standard"

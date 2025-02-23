@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/teomz/Price-Tracker/api-service/models"
@@ -139,17 +140,20 @@ func buildInsertQuery(item []map[string]interface{}, platform string) (string, [
 		values := []interface{}{}
 
 		for i, row := range item {
+
 			omnibus := models.Omnibus{
-				UPC:       row["upc"].(string),
-				Name:      row["name"].(string),
-				Price:     float32(row["price"].(float64)),
-				Version:   row["version"].(string),
-				PageCount: int(row["pagecount"].(float64)),
-				Publisher: row["publisher"].(string),
-				ImgPath:   row["imgpath"].(string),
-				ISTUrl:    row["isturl"].(string),
-				AmazonUrl: row["amazonurl"].(string),
-				Status:    row["status"].(string),
+				UPC:         row["upc"].(string),
+				Name:        row["name"].(string),
+				Price:       float32(row["price"].(float64)),
+				Version:     row["version"].(string),
+				PageCount:   int(row["pagecount"].(float64)),
+				DateCreated: time.Now(),
+				Publisher:   row["publisher"].(string),
+				ImgPath:     row["imgpath"].(string),
+				ISTUrl:      row["isturl"].(string),
+				AmazonUrl:   row["amazonurl"].(string),
+				Status:      row["status"].(string),
+				LastUpdated: time.Now(),
 			}
 
 			if i > 0 {
