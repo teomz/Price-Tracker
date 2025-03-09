@@ -195,8 +195,6 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_WEBSERVER}
       - AIRFLOW_USER=${AIRFLOW_USER}
-      # - AIRFLOW__LOGGING__BASE_LOG_FOLDER=/opt/airflow/logs
-      # - AIRFLOW__LOGGING__ENCRYPT_S3_LOGS = False
       - TZ=Asia/Singapore  
 
     command: bash -c "python3 -m pip install --upgrade pip && pip install --no-cache-dir -r /opt/airflow/requirements.txt && airflow db migrate && airflow scheduler"

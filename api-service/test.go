@@ -1,225 +1,275 @@
 package main
 
-import (
-	"fmt"
-	"log"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
+// func test() {
+// 	url := "https://sg.finance.yahoo.com/quote/SGD%3DX/"
 
-	"github.com/gocolly/colly"
-	"github.com/teomz/Price-Tracker/api-service/models"
-)
+// 	// Get the currency price and handle errors
+// 	price, err := getYahooCurrency(url)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-var (
-	omnibusData = make(map[string]*models.Omnibus) // Shared storage for Omnibus structs
-	mutex       = sync.Mutex{}                     // Prevents race conditions
-	wg          sync.WaitGroup                     // WaitGroup to track Scraper 2 tasks
-)
+// 	// Print the price
+// 	fmt.Println("Currency price:", price)
+// }
 
-func test() {
-	url := "https://www.instocktrades.com/newreleases"
-	var omnibusList []models.Omnibus // Store all completed JSON objects
+// func getYahooCurrency(url string) (string, error) {
 
-	upcChan := make(chan string, 10)            // UPCs from IST
-	resultChan := make(chan models.Omnibus, 10) // Completed Omnibus structs
+// 	foundFirst := false
+// 	// Initialize the collector
+// 	c := colly.NewCollector(
+// 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
+// 		colly.AllowedDomains("sg.finance.yahoo.com"),
+// 		colly.MaxDepth(1),
+// 	)
 
-	// Start amazon worker in a goroutine
-	go func() {
-		for upc := range upcChan {
-			wg.Add(1) // Add to WaitGroup for each goroutine spawned
-			go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan)
-		}
-	}()
+// 	// Declare a variable to store the price
+// 	var price string
 
-	// Start a goroutine to collect results
-	go func() {
-		for omnibus := range resultChan {
-			omnibusList = append(omnibusList, omnibus) // Collect results
-		}
-	}()
+// 	// Define the OnRequest handler
+// 	c.OnRequest(func(r *colly.Request) {
+// 		log.Println("Visiting", r.URL)
+// 	})
 
-	// Start Scraper 1 (keeps running and sending UPCs)
-	scrapeIST(url, upcChan)
+// 	// Define the OnHTML handler
+// 	c.OnHTML("span.base", func(e *colly.HTMLElement) {
+// 		// Extract the price from the span element
+// 		if !foundFirst {
+// 			foundFirst = true
+// 			price = e.Text
+// 		}
+// 	})
 
-	// Wait for all goroutines to complete
-	wg.Wait()
+// 	// Define the error handler
+// 	c.OnError(func(r *colly.Response, err error) {
+// 		log.Println("Error:", err.Error())
+// 	})
 
-	// Close the channels once processing is complete
-	close(upcChan)
-	close(resultChan) // All goroutines finished, close the channel
+// 	// Start visiting the URL
+// 	err := c.Visit(url)
+// 	if err != nil {
+// 		return "", err // Return error if URL visit fails
+// 	}
 
-	// If scraping is successful, return the data
-	fmt.Println(omnibusList)
-}
+// 	// Wait for the scraping to complete
+// 	c.Wait()
 
-func scrapeISTProductInfo(e *colly.HTMLElement, product *models.Omnibus) {
-	selection := e.DOM
-	info := selection.Find("div.prodinfo")
-	infoNodes := info.Children().Nodes
+// 	// Return the price after scraping
+// 	if price == "" {
+// 		return "", fmt.Errorf("price not found")
+// 	}
 
-	for _, infoNode := range infoNodes {
-		infoText := selection.FindNodes(infoNode).Text()
-		values := strings.Split(infoText, ":")
+// 	return price, nil
+// }
 
-		if len(values) > 1 {
-			label := strings.TrimSpace(values[0])
-			value := strings.TrimSpace(values[1])
+// var (
+// 	omnibusData = make(map[string]*models.Omnibus) // Shared storage for Omnibus structs
+// 	mutex       = sync.Mutex{}                     // Prevents race conditions
+// 	wg          sync.WaitGroup                     // WaitGroup to track Scraper 2 tasks
+// )
 
-			// Match and set the relevant product fields
-			switch label {
-			case "Publisher":
-				product.Publisher = value
-			case "UPC":
-				if upc, err := strconv.ParseInt(value, 10, 64); err == nil {
-					product.UPC = strconv.FormatInt(upc, 10) // Store UPC as string
-				}
-			case "Page Count":
-				if pagecount, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64); err == nil {
-					product.PageCount = int(pagecount) // Store as int
-				}
-			}
-		}
-	}
-}
+// func test() {
+// 	url := "https://www.instocktrades.com/newreleases"
+// 	var omnibusList []models.Omnibus // Store all completed JSON objects
 
-// scrapePricingInfo extracts the price from the product content
-func scrapeISTPricingInfo(e *colly.HTMLElement, product *models.Omnibus) {
-	selection := e.DOM
-	pricing := selection.Find("div.pricing")
-	pricingNodes := pricing.Children().Nodes
+// 	upcChan := make(chan string, 10)            // UPCs from IST
+// 	resultChan := make(chan models.Omnibus, 10) // Completed Omnibus structs
 
-	for _, pricingNode := range pricingNodes {
-		pricingText := selection.FindNodes(pricingNode).Text()
-		if strings.Contains(pricingText, ":") {
-			values := strings.Split(pricingText, ":")
+// 	// Start amazon worker in a goroutine
+// 	go func() {
+// 		for upc := range upcChan {
+// 			wg.Add(1) // Add to WaitGroup for each goroutine spawned
+// 			go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan)
+// 		}
+// 	}()
 
-			if len(values) > 1 {
-				label := strings.TrimSpace(values[0])
-				value := strings.TrimSpace(values[1])
+// 	// Start a goroutine to collect results
+// 	go func() {
+// 		for omnibus := range resultChan {
+// 			omnibusList = append(omnibusList, omnibus) // Collect results
+// 		}
+// 	}()
 
-				// Remove the dollar sign from the price and parse it
-				priceStr := strings.Replace(value, "$", "", -1)
-				if label == "Was" {
-					if price, err := strconv.ParseFloat(priceStr, 64); err == nil {
-						product.Price = float32(price)
-					}
-				}
-			}
-		}
-	}
-}
+// 	// Start Scraper 1 (keeps running and sending UPCs)
+// 	scrapeIST(url, upcChan)
 
-func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus) {
-	c := colly.NewCollector(
-		colly.AllowedDomains("www.amazon.sg", "amazon.sg"),
-		colly.MaxDepth(1),
-	)
+// 	// Wait for all goroutines to complete
+// 	wg.Wait()
 
-	var substring string
-	foundFirst := false
-	c.OnHTML("a.a-link-normal.s-underline-text.s-underline-link-text.s-link-style.a-text-normal[href]", func(e *colly.HTMLElement) {
-		// Check if we already found the first match
-		if !foundFirst {
-			// Extract href attribute value
-			href := e.Attr("href")
-			parts := strings.Split(href, "/ref=")
+// 	// Close the channels once processing is complete
+// 	close(upcChan)
+// 	close(resultChan) // All goroutines finished, close the channel
 
-			// Extract the part before "/ref="
-			substring = parts[0]
-			amazonurl := "https://www.amazon.sg" + substring
-			mutex.Lock()
-			if omnibus, exists := omnibusData[upc]; exists {
-				omnibus.AmazonUrl = amazonurl
-				resultChan <- *omnibus // Send completed Omnibus data
-			}
-			mutex.Unlock()
-			foundFirst = true
-			fmt.Println(amazonurl)
-			wg.Done()
-		}
-	})
+// 	// If scraping is successful, return the data
+// 	fmt.Println(omnibusList)
+// }
 
-	c.Visit(source)
-}
+// func scrapeISTProductInfo(e *colly.HTMLElement, product *models.Omnibus) {
+// 	selection := e.DOM
+// 	info := selection.Find("div.prodinfo")
+// 	infoNodes := info.Children().Nodes
 
-func scrapeIST(source string, upcChan chan string) {
-	c := colly.NewCollector(
-		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
-		colly.AllowedDomains("www.instocktrades.com", "instocktrades.com"),
-		colly.MaxDepth(2),
-	)
+// 	for _, infoNode := range infoNodes {
+// 		infoText := selection.FindNodes(infoNode).Text()
+// 		values := strings.Split(infoText, ":")
 
-	c.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting:", r.URL)
-	})
+// 		if len(values) > 1 {
+// 			label := strings.TrimSpace(values[0])
+// 			value := strings.TrimSpace(values[1])
 
-	// This will get the 2nd link from source
-	c.OnHTML("div[class=title]", func(e *colly.HTMLElement) {
-		name := e.ChildText("a")
-		if strings.Contains(name, "Omni") && strings.Contains(name, "HC") {
-			link := e.Request.AbsoluteURL(e.ChildAttr("a", "href"))
-			scrapeISTInfo(link, upcChan)
-		}
-	})
+// 			// Match and set the relevant product fields
+// 			switch label {
+// 			case "Publisher":
+// 				product.Publisher = value
+// 			case "UPC":
+// 				if upc, err := strconv.ParseInt(value, 10, 64); err == nil {
+// 					product.UPC = strconv.FormatInt(upc, 10) // Store UPC as string
+// 				}
+// 			case "Page Count":
+// 				if pagecount, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64); err == nil {
+// 					product.PageCount = int(pagecount) // Store as int
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
-	c.OnHTML("a.btn.hotaction", func(e *colly.HTMLElement) {
-		link := e.Request.AbsoluteURL(e.Attr("href"))
-		c.Visit(link)
-	})
-	c.Visit(source)
-}
+// // scrapePricingInfo extracts the price from the product content
+// func scrapeISTPricingInfo(e *colly.HTMLElement, product *models.Omnibus) {
+// 	selection := e.DOM
+// 	pricing := selection.Find("div.pricing")
+// 	pricingNodes := pricing.Children().Nodes
 
-// ScrapeIST scrapes product details from a given InstockTrades URL
-func scrapeISTInfo(source string, upcChan chan string) {
-	// Initialize the product struct to hold scraped data
-	product := &models.Omnibus{}
+// 	for _, pricingNode := range pricingNodes {
+// 		pricingText := selection.FindNodes(pricingNode).Text()
+// 		if strings.Contains(pricingText, ":") {
+// 			values := strings.Split(pricingText, ":")
 
-	// Create a new Colly collector for instocktrades.com
-	c := colly.NewCollector(
-		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
-		colly.AllowedDomains("www.instocktrades.com", "instocktrades.com"),
-		colly.MaxDepth(2),
-	)
+// 			if len(values) > 1 {
+// 				label := strings.TrimSpace(values[0])
+// 				value := strings.TrimSpace(values[1])
 
-	c.OnHTML("div.frame img", func(e *colly.HTMLElement) {
-		imagePath := e.Attr("src")
-		product.ImgPath = imagePath
-	})
+// 				// Remove the dollar sign from the price and parse it
+// 				priceStr := strings.Replace(value, "$", "", -1)
+// 				if label == "Was" {
+// 					if price, err := strconv.ParseFloat(priceStr, 64); err == nil {
+// 						product.Price = float32(price)
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
-	// Handle the product content scraping for the 2nd link
-	c.OnHTML("div.productcontent", func(e *colly.HTMLElement) {
-		// Set the IST product URL and name
-		product.ISTUrl = e.Request.URL.String()
-		product.Name = e.ChildText("h1")
+// func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus) {
+// 	c := colly.NewCollector(
+// 		colly.AllowedDomains("www.amazon.sg", "amazon.sg"),
+// 		colly.MaxDepth(1),
+// 	)
 
-		if strings.Contains(strings.ToLower(product.Name), "dm") {
-			product.Version = "DM"
-		} else {
-			product.Version = "Standard"
-		}
+// 	var substring string
+// 	foundFirst := false
+// 	c.OnHTML("a.a-link-normal.s-underline-text.s-underline-link-text.s-link-style.a-text-normal[href]", func(e *colly.HTMLElement) {
+// 		// Check if we already found the first match
+// 		if !foundFirst {
+// 			// Extract href attribute value
+// 			href := e.Attr("href")
+// 			parts := strings.Split(href, "/ref=")
 
-		// Scrape additional product info (Publisher, UPC)
-		scrapeISTProductInfo(e, product)
+// 			// Extract the part before "/ref="
+// 			substring = parts[0]
+// 			amazonurl := "https://www.amazon.sg" + substring
+// 			mutex.Lock()
+// 			if omnibus, exists := omnibusData[upc]; exists {
+// 				omnibus.AmazonUrl = amazonurl
+// 				resultChan <- *omnibus // Send completed Omnibus data
+// 			}
+// 			mutex.Unlock()
+// 			foundFirst = true
+// 			fmt.Println(amazonurl)
+// 			wg.Done()
+// 		}
+// 	})
 
-		// Scrape pricing info (Price)
-		scrapeISTPricingInfo(e, product)
+// 	c.Visit(source)
+// }
 
-		product.DateCreated = time.Now()
+// func scrapeIST(source string, upcChan chan string) {
+// 	c := colly.NewCollector(
+// 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
+// 		colly.AllowedDomains("www.instocktrades.com", "instocktrades.com"),
+// 		colly.MaxDepth(2),
+// 	)
 
-		mutex.Lock()
-		omnibusData[product.UPC] = product // Store in map
-		mutex.Unlock()
+// 	c.OnRequest(func(r *colly.Request) {
+// 		log.Println("Visiting:", r.URL)
+// 	})
 
-		log.Println("Scraped IST Data for:", product.UPC)
+// 	// This will get the 2nd link from source
+// 	c.OnHTML("div[class=title]", func(e *colly.HTMLElement) {
+// 		name := e.ChildText("a")
+// 		if strings.Contains(name, "Omni") && strings.Contains(name, "HC") {
+// 			link := e.Request.AbsoluteURL(e.ChildAttr("a", "href"))
+// 			scrapeISTInfo(link, upcChan)
+// 		}
+// 	})
 
-		if product.Version == "Standard" {
-			upcChan <- product.UPC // Send completed Omnibus data
-		}
-		fmt.Println(product.ISTUrl)
-	})
+// 	c.OnHTML("a.btn.hotaction", func(e *colly.HTMLElement) {
+// 		link := e.Request.AbsoluteURL(e.Attr("href"))
+// 		c.Visit(link)
+// 	})
+// 	c.Visit(source)
+// }
 
-	// Start scraping by visiting the source URL
-	c.Visit(source)
-}
+// // ScrapeIST scrapes product details from a given InstockTrades URL
+// func scrapeISTInfo(source string, upcChan chan string) {
+// 	// Initialize the product struct to hold scraped data
+// 	product := &models.Omnibus{}
+
+// 	// Create a new Colly collector for instocktrades.com
+// 	c := colly.NewCollector(
+// 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
+// 		colly.AllowedDomains("www.instocktrades.com", "instocktrades.com"),
+// 		colly.MaxDepth(2),
+// 	)
+
+// 	c.OnHTML("div.frame img", func(e *colly.HTMLElement) {
+// 		imagePath := e.Attr("src")
+// 		product.ImgPath = imagePath
+// 	})
+
+// 	// Handle the product content scraping for the 2nd link
+// 	c.OnHTML("div.productcontent", func(e *colly.HTMLElement) {
+// 		// Set the IST product URL and name
+// 		product.ISTUrl = e.Request.URL.String()
+// 		product.Name = e.ChildText("h1")
+
+// 		if strings.Contains(strings.ToLower(product.Name), "dm") {
+// 			product.Version = "DM"
+// 		} else {
+// 			product.Version = "Standard"
+// 		}
+
+// 		// Scrape additional product info (Publisher, UPC)
+// 		scrapeISTProductInfo(e, product)
+
+// 		// Scrape pricing info (Price)
+// 		scrapeISTPricingInfo(e, product)
+
+// 		product.DateCreated = time.Now()
+
+// 		mutex.Lock()
+// 		omnibusData[product.UPC] = product // Store in map
+// 		mutex.Unlock()
+
+// 		log.Println("Scraped IST Data for:", product.UPC)
+
+// 		if product.Version == "Standard" {
+// 			upcChan <- product.UPC // Send completed Omnibus data
+// 		}
+// 		fmt.Println(product.ISTUrl)
+// 	})
+
+// 	// Start scraping by visiting the source URL
+// 	c.Visit(source)
+// }

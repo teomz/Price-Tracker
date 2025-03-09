@@ -21,7 +21,8 @@ import (
 // @Accept json
 // @Produce json
 // @Param TaskUser query string true "User calling the API" example("user123")
-// @Param Query body []interface{} true "Array of items to upload" example()
+// @Param Use query string true "use case" example()
+// @Param Query body []any true "Array of items to upload" example()
 // @Success 200 {object} models.SuccessDataResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
@@ -59,7 +60,17 @@ func uploadInfo(g *gin.Context) {
 		return
 	}
 
-	var req []map[string]interface{}
+	var req []map[string]any
+
+	use, ok := g.GetQuery("Use")
+
+	if !ok {
+		g.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Action: "uploadInfo",
+			Error:  "Invalid Use Query",
+		})
+		return
+	}
 
 	// Bind JSON request
 	if err := g.ShouldBindJSON(&req); err != nil {
@@ -70,7 +81,7 @@ func uploadInfo(g *gin.Context) {
 		return
 	}
 
-	query, values, err := buildInsertQuery(req, "omnibus")
+	query, values, err := buildInsertQuery(req, use)
 
 	fmt.Println(values)
 
@@ -123,7 +134,7 @@ func uploadInfo(g *gin.Context) {
 	})
 }
 
-func buildInsertQuery(item []map[string]interface{}, platform string) (string, []interface{}, error) {
+func buildInsertQuery(item []map[string]any, platform string) (string, []any, error) {
 	var queryBuilder strings.Builder
 
 	switch platform {
@@ -137,7 +148,7 @@ func buildInsertQuery(item []map[string]interface{}, platform string) (string, [
 		VALUES
 		`)
 
-		values := []interface{}{}
+		values := []any{}
 
 		for i, row := range item {
 
@@ -176,7 +187,45 @@ func buildInsertQuery(item []map[string]interface{}, platform string) (string, [
 
 		return queryBuilder.String(), values, nil
 
+	case "sale":
+		queryBuilder.WriteString(`
+		INSERT INTO sale (
+			date, upc, sale, platform, percent,  lastupdated
+		) 
+		VALUES
+		`)
+
+		values := []any{}
+
+		for i, row := range item {
+
+			sale := models.Sale{
+				Date:        time.Now(),
+				UPC:         row["upc"].(string),
+				Sale:        float32(row["price"].(float64)),
+				Percent:     int(row["percent"].(float64)),
+				Platform:    row["platform"].(string),
+				LastUpdated: time.Now(),
+			}
+
+			if i > 0 {
+				queryBuilder.WriteString(",")
+			}
+			queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)",
+				len(values)+1, len(values)+2, len(values)+3, len(values)+4, len(values)+5, len(values)+6))
+
+			// Append the values to the values slice
+			values = append(values, sale.Date, sale.UPC, sale.Sale, sale.Percent, sale.Platform, sale.LastUpdated)
+		}
+
+		queryBuilder.WriteString(`
+			ON CONFLICT (date, upc, platform)
+			DO NOTHING
+			RETURNING upc;
+		`)
+
+		return queryBuilder.String(), values, nil
 	default:
-		return "", []interface{}{}, fmt.Errorf("Empty List")
+		return "", []any{}, fmt.Errorf("empty list")
 	}
 }

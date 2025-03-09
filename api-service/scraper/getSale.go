@@ -58,8 +58,9 @@ func getScrapedSale(g *gin.Context) {
 		return
 	}
 
-	worker := 4
-	resultChan := make(chan models.Sale, worker) // Completed Sale structs
+	worker := 2
+	urlChan := make(chan models.SaleUrls, worker)
+	resultChan := make(chan models.Sale, worker*2) // Completed Sale structs
 	amazonChan := make(chan models.SaleUrls, worker)
 	successChan := make(chan bool, worker) // Completed Omnibus structs
 
@@ -72,28 +73,27 @@ func getScrapedSale(g *gin.Context) {
 
 	}()
 
-	for _, url := range urlList {
-
-		// if i%20 == 0 && i != 0 {
-		// 	fmt.Println("Sleep...........")
-		// 	time.Sleep(2)
-		// }
-		if url.Amazon != "" {
-			wgSale.Add(1)
-			amazonChan <- url
+	go func() {
+		for url := range urlChan {
+			if url.Amazon == "" {
+				wgSale.Done()
+			} else {
+				amazonChan <- url
+			}
+			if url.IST == "" {
+				wgSale.Done()
+			} else {
+				go getISTSale(url.IST, resultChan, url.UPC)
+			}
 		}
-		if url.IST != "" {
-			wgSale.Add(1)
-			go getISTSale(url.IST, resultChan, url.UPC)
-		}
 
-	}
+	}()
 
 	go func() {
 		counter := 0
 		for amazon := range amazonChan {
 			counter++
-			if counter <= worker/2 {
+			if counter <= worker {
 				// For the first two items, just start them directly
 				go getAmazonSale(amazon.Amazon, resultChan, amazon.UPC, successChan)
 			} else {
@@ -105,7 +105,15 @@ func getScrapedSale(g *gin.Context) {
 
 	}()
 
+	for _, url := range urlList {
+		wgSale.Add(2)
+		urlChan <- url
+	}
+
 	wgSale.Wait()
+	close(urlChan)
+	close(amazonChan)
+	close(successChan)
 	close(resultChan)
 
 	// If scraping is successful, return the data
@@ -122,9 +130,10 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 	foundFirst := false
 	maxRetries := 50
 
-	record.Date = time.Now().Format("2006-01-02")
+	record.Date = time.Now()
 	record.Platform = "Amazon"
 	record.UPC = upc
+	record.Sale = float32(-1)
 
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
@@ -157,7 +166,7 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 			}
 			//fmt.Println(record.Sale)
 			foundFirst = true
-			resultChan <- *&record
+			resultChan <- record
 			successChan <- true
 		}
 
@@ -192,7 +201,7 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 		log.Println(err.Error())
 		// Log the error details
 		record.Sale = float32(-1)
-		resultChan <- *&record
+		resultChan <- record
 		successChan <- true
 	})
 
@@ -217,15 +226,26 @@ func getISTSale(url string, resultChan chan models.Sale, upc string) {
 
 	var record models.Sale
 
-	record.Date = time.Now().Format("2006-01-02")
+	record.Date = time.Now()
 	record.UPC = upc
 	record.Platform = "IST"
+	record.Sale = float32(-1)
 
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
 		colly.AllowedDomains("www.instocktrades.com", "instocktrades.com"),
 		colly.MaxDepth(1),
 	)
+
+	c.OnRequest(func(r *colly.Request) {
+		log.Println("Visiting", r.URL)
+	})
+
+	// This will run after a page is visited and the source is fetched
+	c.OnResponse(func(r *colly.Response) {
+		log.Println("Successfully fetched:", r.Request.URL)
+		log.Println(r.StatusCode)
+	})
 
 	c.OnHTML("div.pricing", func(e *colly.HTMLElement) {
 
@@ -253,6 +273,6 @@ func getISTSale(url string, resultChan chan models.Sale, upc string) {
 
 	c.Visit(url)
 
-	resultChan <- *&record
+	resultChan <- record
 
 }

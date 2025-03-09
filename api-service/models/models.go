@@ -21,7 +21,7 @@ type Omnibus struct {
 }
 
 type Sale struct {
-	Date        string    `json:"date"`
+	Date        time.Time `json:"date"`
 	UPC         string    `json:"upc"`         // Universal Product Code
 	Sale        float32   `json:"sale"`        // Daily sale price
 	Platform    string    `json:"platform"`    // Platform name (e.g., IST, Amazon)
@@ -48,8 +48,13 @@ type SuccessDataResponse struct {
 
 // Struct for request validation
 type QueryRequest struct {
-	Query  string        `json:"query" binding:"required"`
-	Values []interface{} `json:"values" binding:"required"`
+	Query  string `json:"query" binding:"required"`
+	Values []any  `json:"values" binding:"required"`
+}
+
+type QuerySuccessResponse[T any] struct {
+	Action string `json:"action" binding:"required"`
+	Values []T    `json:"values" binding:"required"`
 }
 
 type SuccessScraperResponse struct {
@@ -63,9 +68,9 @@ type SuccessSaleResponse struct {
 }
 
 type SaleUrls struct {
-	UPC    string `json:upc`
-	Amazon string `json:"amazon"` // "https://www.amazon.sg/Flash-Mark-Waid-Omnibus/dp/1779528418/"
-	IST    string `json:"IST"`    // "https://www.instocktrades.com/products/jun247225/flash-by-mark-waid-omnibus-hc-vol-02"
+	UPC    string `json:"upc"`
+	Amazon string `json:"amazonurl"` // "https://www.amazon.sg/Flash-Mark-Waid-Omnibus/dp/1779528418/"
+	IST    string `json:"isturl"`    // "https://www.instocktrades.com/products/jun247225/flash-by-mark-waid-omnibus-hc-vol-02"
 }
 
 func (o Omnibus) String() string {

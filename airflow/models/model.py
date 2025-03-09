@@ -14,3 +14,16 @@ class Omnibus(BaseModel):
     amazonurl: str = Field(..., description="URL to Amazon")
     last_updated: datetime = Field(default_factory=datetime.now, description="Last update timestamp")
     status: str = Field(default='Hot', description="Hot, Cold, Archive")
+
+class Sale(BaseModel):
+    date: str = Field(..., description="Creation date (YYYY-MM-DD)")
+    upc: str = Field(..., description="Universal Product Code")
+    sale: float = Field(..., description="Sale of the omnibus")
+    platform: str = Field(..., description="platform of the sale")
+    percent: int = Field(..., description="percentage of the sale price")
+    last_updated: datetime = Field(default_factory=datetime.now, description="Last update timestamp")
+
+class SaleList(BaseModel):
+    upc: str = Field(..., description="Universal Product Code")
+    amazonurl: str = Field(..., description="URL to Amazon")
+    isturl: str = Field(..., description="URL to IST")

@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -15,13 +16,10 @@ import (
 
 const (
 	//ErrUserIDMissing        = "User ID is required"
-	ErrNoFileUploaded       = "No file is uploaded"
-	ErrFileOpenFailed       = "Failed to open file"
-	ErrFileReadFailed       = "Failed to read file content"
-	ErrInvalidFileExtension = "Invalid file extension %v. Only allowed extensions are: %v"
-	ErrInvalidMimeType      = "Invalid MIME type. Allowed types are: %v"
-	SuccessFileValid        = "File is valid"
-	ErrInvalidUser          = "Invalid user"
+	errInvalidFileExtension = "invalid file extension %v. Only allowed extensions are: %v"
+	errInvalidMimeType      = "invalid MIME type. Allowed types are: %v"
+	successFileValid        = "file is valid"
+	errInvalidUser          = "invalid user"
 )
 
 // Validate_File validates the file upload based on extensions and MIME types
@@ -38,7 +36,7 @@ func Validate_File(g *gin.Context, ext_list []string, mime_list []string) (strin
 
 	// Check if the file extension is in the allowed list using map lookup
 	if !validExts[ext] {
-		return "", fmt.Errorf(ErrInvalidFileExtension, ext, ext_list)
+		return "", fmt.Errorf(errInvalidFileExtension, ext, ext_list)
 	}
 
 	// Open the file to check the MIME type
@@ -53,7 +51,7 @@ func Validate_File(g *gin.Context, ext_list []string, mime_list []string) (strin
 	buf := make([]byte, 512)
 	_, err = fileContent.Read(buf)
 	if err != nil {
-		return "", fmt.Errorf(ErrFileReadFailed)
+		return "", fmt.Errorf("failed to read file content")
 	}
 
 	// Detect the MIME type of the file
@@ -61,23 +59,23 @@ func Validate_File(g *gin.Context, ext_list []string, mime_list []string) (strin
 
 	// Check if the MIME type is in the allowed list using map lookup
 	if !validMimes[mimeType] {
-		return "", fmt.Errorf(ErrInvalidMimeType, mime_list)
+		return "", fmt.Errorf(errInvalidMimeType, mime_list)
 	}
 
 	// If everything is valid, return a success response
-	return SuccessFileValid, nil
+	return successFileValid, nil
 }
 
 func GetFile(g *gin.Context) (*multipart.FileHeader, multipart.File, error) {
 	//Retrieve file from request
 	file, err := g.FormFile("file")
 	if err != nil {
-		return nil, nil, fmt.Errorf(ErrNoFileUploaded)
+		return nil, nil, fmt.Errorf("no file is uploaded")
 	}
 
 	fileContent, err := file.Open()
 	if err != nil {
-		return nil, nil, fmt.Errorf(ErrFileOpenFailed)
+		return nil, nil, fmt.Errorf("failed to open file")
 	}
 
 	return file, fileContent, nil
@@ -86,7 +84,7 @@ func GetFile(g *gin.Context) (*multipart.FileHeader, multipart.File, error) {
 func CheckUser(g *gin.Context, user_env string) error {
 	userID := g.DefaultQuery("TaskUser", "default_user")
 	if userID != user_env {
-		return fmt.Errorf(ErrInvalidUser)
+		return fmt.Errorf("invalid user")
 	}
 	return nil
 }
@@ -148,4 +146,12 @@ func MakeSet(slice []string) map[string]bool {
 		set[v] = true
 	}
 	return set
+}
+
+func IsAllowedPublisher(pub string) error {
+	allowedPublisher := []string{"DC", "Marvel", "Image", "IDW", "Titan", "Boom!", "Dark Horse"}
+	if slices.Contains(allowedPublisher, pub) {
+		return nil
+	}
+	return fmt.Errorf("invalid publisher")
 }

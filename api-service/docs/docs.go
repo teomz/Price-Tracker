@@ -224,7 +224,58 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.SuccessDataResponse"
+                            "$ref": "#/definitions/models.QuerySuccessResponse-string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/postgresql/getInfoByPublisher": {
+            "get": {
+                "description": "Return an array of upc from the PostgreSQL database filtered by date",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "postgres"
+                ],
+                "summary": "get data by date",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User calling the API",
+                        "name": "TaskUser",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Publisher of item",
+                        "name": "Publisher",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.QuerySuccessResponse-models_SaleUrls"
                         }
                     },
                     "400": {
@@ -265,6 +316,14 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "type": "string",
+                        "example": "",
+                        "description": "use case",
+                        "name": "Use",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
                         "description": "Array of items to upload",
                         "name": "Query",
                         "in": "body",
@@ -273,6 +332,51 @@ const docTemplate = `{
                             "type": "array",
                             "items": {}
                         }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessDataResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/scraper/getCurrency": {
+            "get": {
+                "description": "Get fx rate from scraper by providing the url",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scraper"
+                ],
+                "summary": "Get currency from scraper",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"user123\"",
+                        "description": "User calling the API",
+                        "name": "TaskUser",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -471,6 +575,42 @@ const docTemplate = `{
                 }
             }
         },
+        "models.QuerySuccessResponse-models_SaleUrls": {
+            "type": "object",
+            "required": [
+                "action",
+                "values"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "values": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SaleUrls"
+                    }
+                }
+            }
+        },
+        "models.QuerySuccessResponse-string": {
+            "type": "object",
+            "required": [
+                "action",
+                "values"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "values": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "models.Sale": {
             "type": "object",
             "properties": {
@@ -502,12 +642,12 @@ const docTemplate = `{
         "models.SaleUrls": {
             "type": "object",
             "properties": {
-                "IST": {
-                    "description": "\"https://www.instocktrades.com/products/jun247225/flash-by-mark-waid-omnibus-hc-vol-02\"",
+                "amazonurl": {
+                    "description": "\"https://www.amazon.sg/Flash-Mark-Waid-Omnibus/dp/1779528418/\"",
                     "type": "string"
                 },
-                "amazon": {
-                    "description": "\"https://www.amazon.sg/Flash-Mark-Waid-Omnibus/dp/1779528418/\"",
+                "isturl": {
+                    "description": "\"https://www.instocktrades.com/products/jun247225/flash-by-mark-waid-omnibus-hc-vol-02\"",
                     "type": "string"
                 },
                 "upc": {

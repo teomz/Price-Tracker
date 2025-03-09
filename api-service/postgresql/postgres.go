@@ -18,6 +18,7 @@ func Initialize(g *gin.RouterGroup) {
 	{
 		postgresql_group.POST("/uploadInfo", uploadInfo)
 		postgresql_group.GET("/getInfoByDate", getInfoByDate)
+		postgresql_group.GET("/getInfoByPublisher", getInfoByPublisher)
 	}
 
 }

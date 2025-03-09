@@ -46,6 +46,30 @@ definitions:
         description: Standard or DM version
         type: string
     type: object
+  models.QuerySuccessResponse-models_SaleUrls:
+    properties:
+      action:
+        type: string
+      values:
+        items:
+          $ref: '#/definitions/models.SaleUrls'
+        type: array
+    required:
+    - action
+    - values
+    type: object
+  models.QuerySuccessResponse-string:
+    properties:
+      action:
+        type: string
+      values:
+        items:
+          type: string
+        type: array
+    required:
+    - action
+    - values
+    type: object
   models.Sale:
     properties:
       LastUpdated:
@@ -68,11 +92,11 @@ definitions:
     type: object
   models.SaleUrls:
     properties:
-      IST:
-        description: '"https://www.instocktrades.com/products/jun247225/flash-by-mark-waid-omnibus-hc-vol-02"'
-        type: string
-      amazon:
+      amazonurl:
         description: '"https://www.amazon.sg/Flash-Mark-Waid-Omnibus/dp/1779528418/"'
+        type: string
+      isturl:
+        description: '"https://www.instocktrades.com/products/jun247225/flash-by-mark-waid-omnibus-hc-vol-02"'
         type: string
       upc:
         type: string
@@ -262,7 +286,42 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.SuccessDataResponse'
+            $ref: '#/definitions/models.QuerySuccessResponse-string'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: get data by date
+      tags:
+      - postgres
+  /postgresql/getInfoByPublisher:
+    get:
+      consumes:
+      - application/json
+      description: Return an array of upc from the PostgreSQL database filtered by
+        date
+      parameters:
+      - description: User calling the API
+        in: query
+        name: TaskUser
+        required: true
+        type: string
+      - description: Publisher of item
+        in: query
+        name: Publisher
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.QuerySuccessResponse-models_SaleUrls'
         "400":
           description: Bad Request
           schema:
@@ -284,6 +343,12 @@ paths:
         example: '"user123"'
         in: query
         name: TaskUser
+        required: true
+        type: string
+      - description: use case
+        example: ""
+        in: query
+        name: Use
         required: true
         type: string
       - description: Array of items to upload
@@ -311,6 +376,36 @@ paths:
       summary: Upload data to PostgreSQL
       tags:
       - postgres
+  /scraper/getCurrency:
+    get:
+      consumes:
+      - application/json
+      description: Get fx rate from scraper by providing the url
+      parameters:
+      - description: User calling the API
+        example: '"user123"'
+        in: query
+        name: TaskUser
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get currency from scraper
+      tags:
+      - scraper
   /scraper/getScrapedInfo:
     get:
       consumes:

@@ -107,6 +107,7 @@ func getScrapedInfo(g *gin.Context) {
 	wg.Wait()
 	close(upcChan)
 	close(resultChan) // All goroutines finished, close the channel
+	close(successChan)
 
 	fmt.Println("Scarping Done")
 
@@ -149,13 +150,12 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus)
 			// Extract the part before "/ref="
 			substring = parts[0]
 			amazonurl := "https://www.amazon.sg" + substring
+
+			if strings.Contains(substring, "gp/help/customer/") || htmlText == "Visit the help section" {
+				amazonurl = ""
+			}
 			mutex.Lock()
 			if omnibus, exists := omnibusData[upc]; exists {
-				if htmlText == "Visit the help section" || strings.Contains(substring, "gp/help/customer/") {
-					omnibus.AmazonUrl = ""
-				} else {
-					omnibus.AmazonUrl = amazonurl
-				}
 				omnibus.AmazonUrl = amazonurl
 				resultChan <- *omnibus // Send completed Omnibus data
 				log.Println("Found Link: Send result AmazonURL ", omnibus.AmazonUrl, " for ", upc)
