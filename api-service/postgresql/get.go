@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/teomz/Price-Tracker/api-service/models"
@@ -19,7 +18,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param TaskUser query string true "User calling the API"
-// @Param Date query string true "Date of item creation YYYY-MM-DD"
+// Date query string true "Date of item creation YYYY-MM-DD"
 // @Success 200 {object} models.SuccessDataResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
@@ -59,26 +58,26 @@ func getInfoByDate(g *gin.Context) {
 		return
 	}
 
-	req, ok := g.GetQuery("Date")
+	// req, ok := g.GetQuery("Date")
 
-	if !ok {
-		g.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Action: action,
-			Error:  "Invalid Date Query",
-		})
-		return
-	}
+	// if !ok {
+	// 	g.JSON(http.StatusBadRequest, models.ErrorResponse{
+	// 		Action: action,
+	// 		Error:  "Invalid Date Query",
+	// 	})
+	// 	return
+	// }
 
-	_, err = time.Parse("2006-01-02", req)
-	if err != nil {
-		g.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Action: action,
-			Error:  err.Error(),
-		})
-		return
-	}
+	// _, err = time.Parse("2006-01-02", req)
+	// if err != nil {
+	// 	g.JSON(http.StatusBadRequest, models.ErrorResponse{
+	// 		Action: action,
+	// 		Error:  err.Error(),
+	// 	})
+	// 	return
+	// }
 
-	query := "SELECT upc FROM omnibus WHERE datecreated = $1"
+	query := "SELECT upc FROM omnibus WHERE datecreated >= (SELECT MAX(datecreated) FROM omnibus) - INTERVAL '1 month' AND datecreated <= (SELECT MAX(datecreated) FROM omnibus)"
 
 	// Validate query
 	if err := utilities.ValidateQuery(query, allowedQueryTypes, allowedTables); err != nil {
@@ -90,7 +89,7 @@ func getInfoByDate(g *gin.Context) {
 	}
 
 	// Execute the query and handle any errors
-	rows, err := db.pool.Query(context.Background(), query, req)
+	rows, err := db.pool.Query(context.Background(), query)
 	if err != nil {
 		g.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Action: action,

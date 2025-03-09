@@ -256,11 +256,6 @@ paths:
         name: TaskUser
         required: true
         type: string
-      - description: Date of item creation YYYY-MM-DD
-        in: query
-        name: Date
-        required: true
-        type: string
       produces:
       - application/json
       responses:

@@ -25,13 +25,12 @@ SGT = pendulum.timezone("Asia/Singapore")
 
 URL = "https://www.instocktrades.com/newreleases"
 
-
 logging.basicConfig(level=logging.INFO)
 
-@dag(schedule_interval="0 2 * * 2", start_date=days_ago(1), catchup=True)
+@dag(schedule_interval="0 2 * * 2", start_date=days_ago(1), catchup=True, max_active_runs=1)
 def weekly_update_with_new_release():
 
-    vers = 1
+    vers = 3
     
     @task()
     def fetch_info_data(source) -> List[Omnibus]:
@@ -57,13 +56,13 @@ def weekly_update_with_new_release():
     def clean_duplicates(infoList: List[Omnibus]) -> List[Omnibus]:
         logging.info("Removing the duplicates")
 
-        formatted_date = (datetime.now() - timedelta(weeks=1)).strftime("%Y-%m-%d")
+        # formatted_date = (datetime.now() - timedelta(weeks=1)).strftime("%Y-%m-%d")
         # current_date = datetime.now().strftime("%Y-%m-%d")
 
 
         params = {
             "TaskUser": TASKUSER,
-            "Date": formatted_date,
+            # "Date": formatted_date,
         }
 
         try:
@@ -185,8 +184,6 @@ def weekly_update_with_new_release():
     infoList = fetch_info_data(URL) 
     infoList = clean_duplicates(infoList) 
     upload_minio_postgres(infoList)
-
-
 
 
 # Initialize the DAG

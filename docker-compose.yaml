@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:latest
@@ -32,9 +30,10 @@ services:
     environment:
       MINIO_ROOT_USER:  ${MINIO_USER}        # MinIO access key
       MINIO_ROOT_PASSWORD:  ${MINIO_PASSWORD}   # MinIO secret key
+      MINIO_ENDPOINT:  ${MINIO_ENDPOINT} 
     volumes:
       - ./minio_data:/data                   # Persist MinIO data on host
-    command: server /data
+    command: server /data && mc alias set myminio ${MINIO_ENDPOINT} ${MINIO_USER} ${MINIO_PASSWORD} && mc admin update myminio
     networks:
       - api
 
@@ -140,13 +139,19 @@ services:
     environment:
       - LOAD_EX=n
       - EXECUTOR=Sequential
+      - AIRFLOW__LOGGING__REMOTE_LOGGING=True
+      - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=minio_con
+      - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://airflow-logs
+      - AIRFLOW__LOGGING__DELETE_LOCAL_LOGS=True
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_WEBSERVER}
       - AIRFLOW_WWW_EMAIL=${AIRFLOW_WWW_EMAIL}
       - AIRFLOW_WWW_USER=${AIRFLOW_WWW_USER}
       - AIRFLOW_WWW_PASSWORD=${AIRFLOW_WWW_PASSWORD}
       - AIRFLOW_USER=${AIRFLOW_USER}
-      - AIRFLOW__LOGGING__BASE_LOG_FOLDER=/opt/airflow/logs
+      # - AIRFLOW__LOGGING__BASE_LOG_FOLDER=/opt/airflow/logs
+      # - AIRFLOW__LOGGING__ENCRYPT_S3_LOGS = False
+
       - TZ=Asia/Singapore  
     logging:
       options:
@@ -183,10 +188,15 @@ services:
     environment:
       - LOAD_EX=n
       - EXECUTOR=Sequential
+      - AIRFLOW__LOGGING__REMOTE_LOGGING=True
+      - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=minio_con
+      - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://airflow-logs
+      - AIRFLOW__LOGGING__DELETE_LOCAL_LOGS=True
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_WEBSERVER}
       - AIRFLOW_USER=${AIRFLOW_USER}
-      - AIRFLOW__LOGGING__BASE_LOG_FOLDER=/opt/airflow/logs
+      # - AIRFLOW__LOGGING__BASE_LOG_FOLDER=/opt/airflow/logs
+      # - AIRFLOW__LOGGING__ENCRYPT_S3_LOGS = False
       - TZ=Asia/Singapore  
 
     command: bash -c "python3 -m pip install --upgrade pip && pip install --no-cache-dir -r /opt/airflow/requirements.txt && airflow db migrate && airflow scheduler"

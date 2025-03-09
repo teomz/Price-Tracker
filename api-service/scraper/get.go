@@ -26,8 +26,8 @@ var (
 	wg          sync.WaitGroup                     // WaitGroup
 	retry       = sync.Mutex{}                     // Mutex to protect shared resources
 	retryCheck  = make(map[string]int)
-	visited     = make(map[string]bool)
-	visitng     = sync.Mutex{}
+	// visited     = make(map[string]bool)
+	// visitng     = sync.Mutex{}
 )
 
 // getScrapedInfo godoc
@@ -77,11 +77,13 @@ func getScrapedInfo(g *gin.Context) {
 			counter++
 			if counter <= worker {
 				// For the first two items, just start them directly
-				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
+				log.Print("Start worker for ", upc)
+				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan)
 			} else {
 				// Wait for one of the previous workers to finish before starting a new one
 				<-successChan
-				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
+				log.Print("Received Success and Starting worker for ", upc)
+				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan)
 			}
 		}
 	}()
@@ -92,7 +94,9 @@ func getScrapedInfo(g *gin.Context) {
 	go func() {
 
 		for omnibus := range resultChan {
+			log.Println("Goroutine Collection for ", omnibus.UPC)
 			omnibusList = append(omnibusList, omnibus) // Collect results
+			successChan <- true
 			wg.Done()
 		}
 
@@ -104,6 +108,8 @@ func getScrapedInfo(g *gin.Context) {
 	close(upcChan)
 	close(resultChan) // All goroutines finished, close the channel
 
+	fmt.Println("Scarping Done")
+
 	// If scraping is successful, return the data
 	g.JSON(http.StatusOK, models.SuccessScraperResponse{
 		Action: "Scraping successful",
@@ -111,7 +117,7 @@ func getScrapedInfo(g *gin.Context) {
 	})
 }
 
-func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus, successChan chan bool) {
+func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus) {
 	const maxRetries = 55
 
 	c := colly.NewCollector(
@@ -132,10 +138,10 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 	var substring string
 	foundFirst := false
 	c.OnHTML("a.a-link-normal", func(e *colly.HTMLElement) {
-		log.Println("Found Link")
 		htmlText := e.Text
 		// Check if we already found the first match
 		if !foundFirst {
+			log.Println("Found Link in Amazon")
 			// Extract href attribute value
 			href := e.Attr("href")
 			parts := strings.Split(href, "/ref=")
@@ -152,17 +158,17 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 				}
 				omnibus.AmazonUrl = amazonurl
 				resultChan <- *omnibus // Send completed Omnibus data
-			} else {
+				log.Println("Found Link: Send result AmazonURL ", omnibus.AmazonUrl, " for ", upc)
 			}
 			mutex.Unlock()
 			foundFirst = true
-			successChan <- true
-
+			// successChan <- true
+			// log.Println("Found Link: Send successChan for ", upc)
 		}
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
-		log.Println("Error")
+		log.Println("Error for ", upc)
 		retry.Lock()
 		retryCount, exists := retryCheck[upc]
 		if !exists {
@@ -178,32 +184,35 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 			randomSleepDuration := time.Duration(rand.Intn(6)+5) * time.Second
 			time.Sleep(randomSleepDuration)
 			log.Printf("Retrying %s (attempt %d/%d)", source, retryCount, maxRetries)
-			go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
+			go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan)
 		} else {
 			mutex.Lock()
 			if omnibus, exists := omnibusData[upc]; exists {
 				omnibus.AmazonUrl = err.Error()
 				resultChan <- *omnibus // Send completed Omnibus data
+				log.Println("Error: Send empty AmazonURL for ", upc)
 			}
 			mutex.Unlock()
 			foundFirst = true
-			successChan <- true
+			// successChan <- true
+			// log.Println("Error: Send successChan for ", upc)
 		}
 	})
 
 	c.OnScraped(func(r *colly.Response) {
-		log.Println("OnScraped")
+		// log.Println("OnScraped")
 		if !foundFirst {
 			// Log the error details
 			mutex.Lock()
 			if omnibus, exists := omnibusData[upc]; exists {
 				omnibus.AmazonUrl = ""
 				resultChan <- *omnibus // Send completed Omnibus data
-			} else {
+				log.Println("OnScrape: Send no result AmazonURL for ", upc)
 			}
 			mutex.Unlock()
 			foundFirst = true
-			successChan <- true
+			// successChan <- true
+			// log.Println("OnScrape: Send successChan for ", upc)
 		}
 
 	})
@@ -231,9 +240,10 @@ func scrapeIST(source string, upcChan chan string, resultChan chan models.Omnibu
 	c.OnHTML("div[class=title]", func(e *colly.HTMLElement) {
 		name := e.ChildText("a")
 		if (strings.Contains(name, "Omni") && strings.Contains(name, "HC")) ||
-			(strings.Contains(name, "Deluxe") && strings.Contains(name, "HC")) ||
+			((strings.Contains(name, "Deluxe") || strings.Contains(name, "DLX")) && strings.Contains(name, "HC")) ||
 			(strings.Contains(name, "Library") && strings.Contains(name, "HC")) ||
-			(strings.Contains(name, "Omni") && strings.Contains(name, "Conan")) {
+			(strings.Contains(name, "Omni") && strings.Contains(name, "Conan")) ||
+			((strings.Contains(name, "Teenage Mutant Ninja Turtles") || strings.Contains(name, "TMNT")) && strings.Contains(name, "HC")) {
 			wg.Add(1)
 			link := e.Request.AbsoluteURL(e.ChildAttr("a", "href"))
 			log.Println(link)
@@ -261,6 +271,7 @@ func scrapeIST(source string, upcChan chan string, resultChan chan models.Omnibu
 			c.Visit(link) // Visit the next page
 		}
 	})
+
 	c.Visit(source)
 	c.Wait()
 }
@@ -319,6 +330,12 @@ func scrapeISTInfo(source string, upcChan chan string, resultChan chan models.Om
 			resultChan <- *product
 		}
 	})
+
+	c.OnError(func(r *colly.Response, err error) {
+		log.Println("Error for ISTurl: ", r.Request.URL)
+		wg.Done()
+	})
+
 	// Start scraping by visiting the source URL
 	c.Visit(source)
 

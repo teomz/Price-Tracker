@@ -218,13 +218,6 @@ const docTemplate = `{
                         "name": "TaskUser",
                         "in": "query",
                         "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Date of item creation YYYY-MM-DD",
-                        "name": "Date",
-                        "in": "query",
-                        "required": true
                     }
                 ],
                 "responses": {
