@@ -66,9 +66,9 @@ func getScrapedInfo(g *gin.Context) {
 		return
 	}
 
-	upcChan := make(chan string, worker)            // UPCs from IST
-	resultChan := make(chan models.Omnibus, worker) // Completed Omnibus structs
-	successChan := make(chan bool, worker)          // Completed Omnibus structs
+	upcChan := make(chan string)            // UPCs from IST
+	resultChan := make(chan models.Omnibus) // Completed Omnibus structs
+	successChan := make(chan bool, worker)  // Completed Omnibus structs
 
 	// Start amazon worker in a goroutine
 	go func() {
@@ -78,12 +78,12 @@ func getScrapedInfo(g *gin.Context) {
 			if counter <= worker {
 				// For the first two items, just start them directly
 				log.Print("Start worker for ", upc)
-				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan)
+				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
 			} else {
 				// Wait for one of the previous workers to finish before starting a new one
 				<-successChan
 				log.Print("Received Success and Starting worker for ", upc)
-				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan)
+				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
 			}
 		}
 	}()
@@ -94,9 +94,8 @@ func getScrapedInfo(g *gin.Context) {
 	go func() {
 
 		for omnibus := range resultChan {
-			log.Println("Goroutine Collection for ", omnibus.UPC)
+			log.Println("Goroutine Collection for ", omnibus.Name, " ", omnibus.UPC, " for ", omnibus.Version)
 			omnibusList = append(omnibusList, omnibus) // Collect results
-			successChan <- true
 			wg.Done()
 		}
 
@@ -118,8 +117,9 @@ func getScrapedInfo(g *gin.Context) {
 	})
 }
 
-func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus) {
+func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus, successChan chan bool) {
 	const maxRetries = 55
+	haveRetried := false
 
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"),
@@ -184,7 +184,8 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus)
 			randomSleepDuration := time.Duration(rand.Intn(6)+5) * time.Second
 			time.Sleep(randomSleepDuration)
 			log.Printf("Retrying %s (attempt %d/%d)", source, retryCount, maxRetries)
-			go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan)
+			go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
+			haveRetried = true
 		} else {
 			mutex.Lock()
 			if omnibus, exists := omnibusData[upc]; exists {
@@ -219,6 +220,10 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus)
 
 	c.Visit(source)
 
+	if !haveRetried {
+		successChan <- true
+	}
+
 }
 
 func scrapeIST(source string, upcChan chan string, resultChan chan models.Omnibus) {
@@ -243,7 +248,7 @@ func scrapeIST(source string, upcChan chan string, resultChan chan models.Omnibu
 			((strings.Contains(name, "Deluxe") || strings.Contains(name, "DLX")) && strings.Contains(name, "HC")) ||
 			(strings.Contains(name, "Library") && strings.Contains(name, "HC")) ||
 			(strings.Contains(name, "Omni") && strings.Contains(name, "Conan")) ||
-			((strings.Contains(name, "Teenage Mutant Ninja Turtles") || strings.Contains(name, "TMNT")) && strings.Contains(name, "HC")) {
+			((strings.Contains(name, "Teenage Mutant Ninja Turtles") || strings.Contains(name, "TMNT") || strings.Contains(name, "Daredevil")) && strings.Contains(name, "HC")) {
 			wg.Add(1)
 			link := e.Request.AbsoluteURL(e.ChildAttr("a", "href"))
 			log.Println(link)
@@ -305,7 +310,7 @@ func scrapeISTInfo(source string, upcChan chan string, resultChan chan models.Om
 		product.ISTUrl = e.Request.URL.String()
 		product.Name = e.ChildText("h1")
 
-		if strings.Contains(strings.ToLower(product.Name), " dm ") {
+		if strings.Contains(strings.ToLower(product.Name), " dm") {
 			product.Version = "DM"
 		} else if strings.Contains(strings.ToLower(product.Name), "direct market") {
 			product.Version = "DM"

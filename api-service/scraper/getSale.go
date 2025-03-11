@@ -75,14 +75,13 @@ func getScrapedSale(g *gin.Context) {
 
 	go func() {
 		for url := range urlChan {
-			if url.Amazon == "" {
-				wgSale.Done()
-			} else {
+			if url.Amazon != "" && url.IST != "" {
+				wgSale.Add(1)
+			}
+			if url.Amazon != "" {
 				amazonChan <- url
 			}
-			if url.IST == "" {
-				wgSale.Done()
-			} else {
+			if url.IST != "" {
 				go getISTSale(url.IST, resultChan, url.UPC)
 			}
 		}
@@ -106,7 +105,7 @@ func getScrapedSale(g *gin.Context) {
 	}()
 
 	for _, url := range urlList {
-		wgSale.Add(2)
+		wgSale.Add(1)
 		urlChan <- url
 	}
 
@@ -115,6 +114,74 @@ func getScrapedSale(g *gin.Context) {
 	close(amazonChan)
 	close(successChan)
 	close(resultChan)
+
+	// worker := 1
+	// urlChan := make(chan models.FlatData, worker)
+	// resultChan := make(chan models.Sale, worker) // Completed Sale structs
+	// successChan := make(chan bool, worker)       // Completed Omnibus structs
+
+	// var flattened []models.FlatData
+
+	// // Iterate over each record and flatten it
+	// for _, data := range urlList {
+	// 	if data.Amazon != "" {
+	// 		flattened = append(flattened, models.FlatData{
+	// 			Source: "amazon",
+	// 			UPC:    data.UPC,
+	// 			URL:    data.Amazon,
+	// 		})
+	// 	}
+	// 	if data.IST != "" {
+	// 		flattened = append(flattened, models.FlatData{
+	// 			Source: "ist",
+	// 			UPC:    data.UPC,
+	// 			URL:    data.IST,
+	// 		})
+	// 	}
+	// }
+
+	// go func() {
+	// 	counter := 0
+	// 	for url := range urlChan {
+	// 		counter++
+	// 		if counter <= worker {
+	// 			// For the first two items, just start them directly
+	// 			if url.Source == "amazon" {
+	// 				go getAmazonSale(url.URL, resultChan, url.UPC, successChan)
+	// 			} else {
+	// 				go getISTSale(url.URL, resultChan, url.UPC, successChan)
+	// 			}
+	// 		} else {
+	// 			// Wait for one of the previous workers to finish before starting a new one
+	// 			<-successChan
+	// 			if url.Source == "amazon" {
+	// 				go getAmazonSale(url.URL, resultChan, url.UPC, successChan)
+	// 			} else {
+	// 				go getISTSale(url.URL, resultChan, url.UPC, successChan)
+	// 			}
+	// 		}
+	// 	}
+
+	// }()
+
+	// go func() {
+	// 	for sale := range resultChan {
+	// 		log.Printf("Recording %s: Received Price $%f for %s ", sale.Platform, sale.Sale, sale.UPC)
+	// 		saleList = append(saleList, sale) // Collect results
+	// 		successChan <- true
+	// 		wgSale.Done()
+	// 	}
+	// }()
+
+	// for _, url := range flattened {
+	// 	wgSale.Add(1)
+	// 	urlChan <- url
+	// }
+
+	// wgSale.Wait()
+	// close(urlChan)
+	// close(successChan)
+	// close(resultChan)
 
 	// If scraping is successful, return the data
 	g.JSON(http.StatusOK, models.SuccessSaleResponse{
@@ -129,6 +196,7 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 	var record models.Sale
 	foundFirst := false
 	maxRetries := 50
+	haveRetried := false
 
 	record.Date = time.Now()
 	record.Platform = "Amazon"
@@ -142,12 +210,12 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 	)
 
 	c.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting", r.URL)
+		log.Println("Visiting", r.URL, " ", upc)
 	})
 
 	// This will run after a page is visited and the source is fetched
 	c.OnResponse(func(r *colly.Response) {
-		log.Println("Successfully fetched:", r.Request.URL)
+		log.Println("Successfully fetched:", r.Request.URL, " ", upc)
 		log.Println(r.StatusCode)
 	})
 
@@ -157,7 +225,7 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 			priceFraction := e.ChildText("span.a-price-fraction")
 			// Construct the full price
 			price := fmt.Sprintf("%s.%s", strings.Replace(priceWhole, ".", "", 1), strings.Replace(priceFraction, ".", "", 1))
-			log.Printf("Price Found for %s : %s", url, price)
+			log.Printf("Price Found for %s : %s", upc, price)
 			sale, err := strconv.ParseFloat(price, 32)
 			if err != nil {
 				record.Sale = float32(-1)
@@ -166,8 +234,9 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 			}
 			//fmt.Println(record.Sale)
 			foundFirst = true
-			resultChan <- record
-			successChan <- true
+			// log.Printf("%s: Sending Price $%f for %s ", record.Platform, record.Sale, record.UPC)
+			// resultChan <- record
+			// successChan <- true
 		}
 
 	})
@@ -191,7 +260,8 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 			if retryCount <= maxRetries {
 				randomSleepDuration := time.Duration(rand.Intn(6)+5) * time.Second
 				time.Sleep(randomSleepDuration)
-				log.Printf("Retrying %s (attempt %d/%d)", url, retryCount, maxRetries)
+				log.Printf("Retrying %s (attempt %d/%d)", upc, retryCount, maxRetries)
+				haveRetried = true
 				go getAmazonSale(url, resultChan, upc, successChan)
 			}
 		}
@@ -201,23 +271,32 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 		log.Println(err.Error())
 		// Log the error details
 		record.Sale = float32(-1)
-		resultChan <- record
-		successChan <- true
+		// log.Printf("%s: Sending Price $%f for %s ", record.Platform, record.Sale, record.UPC)
+		// resultChan <- record
+		// successChan <- true
 	})
 
-	// c.OnResponse(func(r *colly.Response) {
-	// 	if r.StatusCode == 503 {
-	// 		log.Println("Amazon returned 503 Service Unavailable, retrying...")
-	// 		for attempts := 1; attempts <= maxRetries; attempts++ {
-	// 			randomSleepDuration := time.Duration(rand.Intn(6)+5) * time.Second
-	// 			time.Sleep(randomSleepDuration)
-	// 			log.Printf("Error scraping Amazon (attempt %d/%d): %v\n", attempts+1, maxRetries)
-	// 			c.Visit(url)
-	// 		}
+	// c.OnScraped(func(r *colly.Response) {
+	// 	if !foundFirst {
+	// 		log.Println("OnScraped:", upc)
+	// 		// Log the error details
+	// 		record.Sale = float32(-1)
+	// 		foundFirst = true
+	// 		log.Printf("%s: Sending Price $%f for %s ", record.Platform, record.Sale, record.UPC)
+	// 		resultChan <- record
+	// 		successChan <- true
 	// 	}
+
 	// })
 
 	c.Visit(url)
+
+	if !haveRetried {
+		log.Printf("%s: Sending Price $%f for %s ", record.Platform, record.Sale, record.UPC)
+		resultChan <- record
+		successChan <- true
+	}
+
 }
 
 func getISTSale(url string, resultChan chan models.Sale, upc string) {
@@ -238,7 +317,7 @@ func getISTSale(url string, resultChan chan models.Sale, upc string) {
 	)
 
 	c.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting", r.URL)
+		log.Println("Visiting", r.URL, " ", upc)
 	})
 
 	// This will run after a page is visited and the source is fetched
@@ -273,6 +352,7 @@ func getISTSale(url string, resultChan chan models.Sale, upc string) {
 
 	c.Visit(url)
 
+	log.Printf("%s: Sending Price $%f for %s ", record.Platform, record.Sale, record.UPC)
 	resultChan <- record
 
 }

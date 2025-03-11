@@ -30,6 +30,12 @@ type Sale struct {
 
 }
 
+type FlatData struct {
+	Source string `json:"source"`
+	UPC    string `json:"upc"`
+	URL    string `json:"url"`
+}
+
 type ErrorResponse struct {
 	Action string `json:"action"`
 	Error  string `json:"error"`
