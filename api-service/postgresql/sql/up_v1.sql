@@ -17,10 +17,12 @@ CREATE TABLE IF NOT EXISTS omnibus (
 
 	CREATE TABLE IF NOT EXISTS sale (
     date DATE,                     -- Store the date only (no time)
+	time TIME ,
     upc VARCHAR(13),               -- Universal Product Code
     sale REAL NOT NULL,            -- Sale price
     platform TEXT NOT NULL,        -- Platform (e.g., IST, Amazon)
     percent INT NOT NULL,          -- Discount percentage
-    PRIMARY KEY (date, upc, platform)    -- Composite primary key
+	lastupdated TIMESTAMP,
+    PRIMARY KEY (date, time, upc, platform)    -- Composite primary key
 	);
 

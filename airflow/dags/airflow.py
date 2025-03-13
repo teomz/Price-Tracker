@@ -1,5 +1,6 @@
 from airflow.decorators import dag, task
 from airflow.utils.dates import days_ago
+from airflow.exceptions import AirflowFailException
 import logging
 import requests
 from dotenv import load_dotenv
@@ -36,13 +37,16 @@ def upload_to_postgresql(chunk: List[any], use: str):
         'Use': use,
     }
     response = requests.post("http://api-service:8080/api/v1/postgresql/uploadInfo", json=chunk, headers=headers, params=params)
+
     if response.status_code == 200:
         logging.info(f"Successfully uploaded chunk to PostgreSQL.")
     else:
         logging.error(f"Failed to upload chunk to PostgreSQL: {response.text}")
+    if response.status_code != 200:
+        raise AirflowFailException(f"Request failed with status code {response.status_code}")
 
 
-def split_list(data: List[Omnibus], chunk_size: int) -> List[List[Omnibus]]:
+def split_list(data: List[any], chunk_size: int) -> List[List[any]]:
     """Breaks the list into chunks of specified size."""
     return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]    
 
@@ -62,7 +66,8 @@ def weekly_update_with_new_release():
 
         try:
             response = requests.get("http://api-service:8080/api/v1/scraper/getScrapedInfo", params=params)
-            response.raise_for_status()  
+            if response.status_code != 200:
+                raise AirflowFailException(f"Request failed with status code {response.status_code}")            
             data = response.json()['data']
             logging.info(f"InfoList Length: {len(data)}") 
             return data
@@ -86,7 +91,8 @@ def weekly_update_with_new_release():
 
         try:
             response = requests.get("http://api-service:8080/api/v1/postgresql/getInfoByDate", params=params)
-            response.raise_for_status()  
+            if response.status_code != 200:
+                raise AirflowFailException(f"Request failed with status code {response.status_code}")
             duplicatesList = response.json()['values']
             if duplicatesList is not None:
                 logging.info(f"duplicatesList Length: {len(duplicatesList)}") 
@@ -159,7 +165,7 @@ def weekly_update_with_new_release():
 
         logging.info("Running task: json_to_parquet")
   
-        chunk_size = 10000 
+        chunk_size = 1000000
 
         today_date = datetime.today().strftime('%Y-%m-%d')  
 
@@ -195,11 +201,10 @@ def weekly_update_with_new_release():
 pipeline = weekly_update_with_new_release()
 
 
-@dag(schedule_interval="0 8 * * *", start_date=days_ago(1), catchup=True, max_active_runs=1)
+@dag(schedule_interval="0 */4 * * *", start_date=days_ago(1), catchup=False, max_active_runs=1)
 def daily_price_update():
 
-    vers = 1
-    chunk_size = 10000 
+    chunk_size = 1000000 
 
     @task()
     def get_today_fx_rate() -> str:
@@ -210,6 +215,8 @@ def daily_price_update():
         }
 
         response = requests.get("http://api-service:8080/api/v1/scraper/getCurrency", params=params)
+        if response.status_code != 200:
+            raise AirflowFailException(f"Request failed with status code {response.status_code}")
         logging.info("get_today_fx_rate: status ",response.raise_for_status())
         fxrate = response.json()['inserted']
         logging.info("Exchange rate received",fxrate)
@@ -217,7 +224,7 @@ def daily_price_update():
     
     @task()
     def getSaleforPlatform(platform: str) -> List[SaleList]:
-        logging.info("Running task: getSaleforMarvel")
+        logging.info("Running task: getSalefor",platform)
 
         params = {
             'TaskUser': TASKUSER,
@@ -229,6 +236,8 @@ def daily_price_update():
             logging.info(f"Successfully get info from PostgreSQL.")
         else:
             logging.error(f"Failed get info from PostgreSQL: {response.json()['error']}")
+        if response.status_code != 200:
+            raise AirflowFailException(f"Request failed with status code {response.status_code}")
         return response.json()['values']
 
     @task()
@@ -242,7 +251,7 @@ def daily_price_update():
     @task()
     def getScrapedSale(saleList: List[SaleList]) -> List[Sale]:
 
-        logging.info("Running task: getSaleforMarvel")
+        logging.info("Running task: getScrapedSale")
 
         params = {
             'TaskUser': TASKUSER,
@@ -253,6 +262,8 @@ def daily_price_update():
             logging.info(f"Successfully get info from PostgreSQL.")
         else:
             logging.error(f"Failed get info from PostgreSQL: {response.json()['error']}")
+        if response.status_code != 200:
+            raise AirflowFailException(f"Request failed with status code {response.status_code}")
         return response.json()['data']
     
     @task()
@@ -285,13 +296,14 @@ def daily_price_update():
         
 
 
-    # for i in ["DC", "Marvel", "Image", "IDW", "Titan", "Boom!", "Dark Horse"]:
-    saleList = getSaleforPlatform("Marvel")
-    saleList = cleanUnvalidLink_Temp(saleList)
-    saleList = getScrapedSale(saleList)
-    fxrate = get_today_fx_rate()
-    saleList = transformSale(saleList, fxrate)
-    upload_sale(saleList)
+    for i in ["DC", "Marvel", "Image", "IDW", "Titan", "Boom!", "Dark Horse"]:
+    # for i in ["Titan"]:    
+        saleList = getSaleforPlatform(i)
+        saleList = cleanUnvalidLink_Temp(saleList)
+        saleList = getScrapedSale(saleList)
+        fxrate = get_today_fx_rate()
+        saleList = transformSale(saleList, fxrate)
+        upload_sale(saleList)
 
 sale_pipeline = daily_price_update()
 info_pipeline = weekly_update_with_new_release()

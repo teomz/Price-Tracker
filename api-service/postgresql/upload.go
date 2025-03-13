@@ -190,7 +190,7 @@ func buildInsertQuery(item []map[string]any, platform string) (string, []any, er
 	case "sale":
 		queryBuilder.WriteString(`
 		INSERT INTO sale (
-			date, upc, sale, platform, percent,  lastupdated
+			date, upc, time, sale, platform, percent, lastupdated
 		) 
 		VALUES
 		`)
@@ -198,11 +198,11 @@ func buildInsertQuery(item []map[string]any, platform string) (string, []any, er
 		values := []any{}
 
 		for i, row := range item {
-
+			fmt.Println(row)
 			sale := models.Sale{
 				Date:        time.Now(),
 				UPC:         row["upc"].(string),
-				Sale:        float32(row["price"].(float64)),
+				Sale:        float32(row["sale"].(float64)),
 				Percent:     int(row["percent"].(float64)),
 				Platform:    row["platform"].(string),
 				LastUpdated: time.Now(),
@@ -211,15 +211,15 @@ func buildInsertQuery(item []map[string]any, platform string) (string, []any, er
 			if i > 0 {
 				queryBuilder.WriteString(",")
 			}
-			queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)",
-				len(values)+1, len(values)+2, len(values)+3, len(values)+4, len(values)+5, len(values)+6))
+			queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+				len(values)+1, len(values)+2, len(values)+3, len(values)+4, len(values)+5, len(values)+6, len(values)+7))
 
 			// Append the values to the values slice
-			values = append(values, sale.Date, sale.UPC, sale.Sale, sale.Percent, sale.Platform, sale.LastUpdated)
+			values = append(values, sale.Date, sale.UPC, time.Now(), sale.Sale, sale.Platform, sale.Percent, sale.LastUpdated)
 		}
 
 		queryBuilder.WriteString(`
-			ON CONFLICT (date, upc, platform)
+			ON CONFLICT (date, time, upc, platform)
 			DO NOTHING
 			RETURNING upc;
 		`)

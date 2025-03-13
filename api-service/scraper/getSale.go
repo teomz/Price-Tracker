@@ -1,7 +1,6 @@
 package scraper
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -219,12 +218,13 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 		log.Println(r.StatusCode)
 	})
 
-	c.OnHTML("span.a-price", func(e *colly.HTMLElement) {
+	c.OnHTML("span.slot-price", func(e *colly.HTMLElement) {
 		if !foundFirst {
-			priceWhole := e.ChildText("span.a-price-whole")
-			priceFraction := e.ChildText("span.a-price-fraction")
-			// Construct the full price
-			price := fmt.Sprintf("%s.%s", strings.Replace(priceWhole, ".", "", 1), strings.Replace(priceFraction, ".", "", 1))
+			price := strings.Replace(strings.TrimSpace(e.Text), "S$", "", 1)
+			// priceWhole := e.ChildText("span.a-price-whole")
+			// priceFraction := e.ChildText("span.a-price-fraction")
+			// // Construct the full price
+			// price := fmt.Sprintf("%s.%s", strings.Replace(priceWhole, ".", "", 1), strings.Replace(priceFraction, ".", "", 1))
 			log.Printf("Price Found for %s : %s", upc, price)
 			sale, err := strconv.ParseFloat(price, 32)
 			if err != nil {
@@ -240,6 +240,28 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 		}
 
 	})
+
+	// c.OnHTML("span.a-price", func(e *colly.HTMLElement) {
+	// 	if !foundFirst {
+	// 		priceWhole := e.ChildText("span.a-price-whole")
+	// 		priceFraction := e.ChildText("span.a-price-fraction")
+	// 		// Construct the full price
+	// 		price := fmt.Sprintf("%s.%s", strings.Replace(priceWhole, ".", "", 1), strings.Replace(priceFraction, ".", "", 1))
+	// 		log.Printf("Price Found for %s : %s", upc, price)
+	// 		sale, err := strconv.ParseFloat(price, 32)
+	// 		if err != nil {
+	// 			record.Sale = float32(-1)
+	// 		} else {
+	// 			record.Sale = float32(sale)
+	// 		}
+	// 		//fmt.Println(record.Sale)
+	// 		foundFirst = true
+	// 		// log.Printf("%s: Sending Price $%f for %s ", record.Platform, record.Sale, record.UPC)
+	// 		// resultChan <- record
+	// 		// successChan <- true
+	// 	}
+
+	// })
 
 	c.OnHTML("title", func(e *colly.HTMLElement) {
 		titleText := e.Text
