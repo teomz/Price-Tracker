@@ -41,12 +41,16 @@ x-airflow-common:
   #   - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
   #   - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
   volumes:
+    &airflow-common-vol
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/script:/opt/airflow/script
     - ./airflow/plugins:/opt/airflow/plugins
+    - ./airflow/config:/opt/airflow/config
     - ./airflow/logs:/opt/airflow/logs
     - ./airflow/models:/opt/airflow/models
     - ./airflow/requirements.txt:/opt/airflow/requirements.txt
+    - ./airflow/dbt:/opt/airflow/dbt
+
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -92,7 +96,7 @@ services:
       MINIO_ENDPOINT:  ${MINIO_ENDPOINT} 
     volumes:
       - ./minio_data:/data                   # Persist MinIO data on host
-    command: server /data && mc alias set myminio ${MINIO_ENDPOINT} ${MINIO_USER} ${MINIO_PASSWORD} && mc admin update myminio
+    command: server /data --address :9000 --console-address :9001
     networks:
       - api
 
@@ -114,151 +118,6 @@ services:
       SCRAPER_BUCKET: ${SCRAPER_BUCKET}
     networks:
       - api
-
-  # # Optional: Your app container here
-  # app:
-  #   image: your-app-image
-  #   container_name: your-app
-  #   depends_on:
-  #     - db
-  #   networks:
-  #     - postgres-network
-  #   environment:
-  #     DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
-
-
-  # airflow-webserver:
-  #   image: apache/airflow:latest
-  #   container_name: airflow-webserver
-  #   entrypoint: ['/opt/airflow/script/entrypoint.sh']
-  #   restart: always
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #   environment:
-  #     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-  #     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
-  #     AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
-  #     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
-  #     AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER}
-  #     AIRFLOW_WWW_EMAIL: ${AIRFLOW_WWW_EMAIL}
-  #     AIRFLOW_WWW_USER: ${AIRFLOW_WWW_USER}
-  #     AIRFLOW_WWW_PASSWORD: ${AIRFLOW_WWW_PASSWORD}
-  #   volumes:
-  #     - ./airflow/entrypoint.sh:/opt/airflow/script/entrypoint.sh
-  #     - ./airflow:/opt/airflow/dags
-  #     - ./logs:/opt/airflow/logs
-  #     - ./plugins:/opt/airflow/plugins
-  #   ports:
-  #     - "8081:8080"  # Airflow UI on port 8081
-  #   command: bash -c "airflow webserver && chmod +x /opt/airflow/script/entrypoint.sh"
-  #   healthcheck:
-  #     test: ['CMD-SHELL', "[ -f /opt/airflow/airflow-webserver.pid ]"]
-  #     interval: 30s
-  #     timeout: 30s
-  #     retries: 3
-
-  # airflow-scheduler:
-  #   image: apache/airflow:latest
-  #   container_name: airflow-scheduler
-  #   restart: always
-  #   depends_on:
-  #     - airflow-webserver
-  #     - redis
-  #   environment:
-  #     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-  #     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
-  #     AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
-  #     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
-  #     AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER}
-  #   command: bash -c "airflow db migrate && airflow scheduler"
-
-  # airflow-worker:
-  #   image: apache/airflow:latest
-  #   container_name: airflow-worker
-  #   restart: always
-  #   depends_on:
-  #     - airflow-scheduler
-  #     - redis
-  #   environment:
-  #     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-  #     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
-  #     AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
-  #     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
-  #     AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER}
-  #     DUMB_INIT_SETSID: "0"
-  #   command: celery worker
-
-  # webserver:
-  #   image: apache/airflow:latest
-  #   command: bash -c "airflow webserver && chmod +x /opt/airflow/script/entrypoint.sh "
-  #   entrypoint: ['/opt/airflow/script/entrypoint.sh']
-  #   depends_on:
-  #     - postgres
-  #   environment:
-  #     - LOAD_EX=n
-  #     - EXECUTOR=Sequential
-  #     - AIRFLOW__LOGGING__REMOTE_LOGGING=True
-  #     - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=minio_con
-  #     - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://airflow-logs
-  #     - AIRFLOW__LOGGING__DELETE_LOCAL_LOGS=True
-  #     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
-  #     - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_WEBSERVER}
-  #     - AIRFLOW_WWW_EMAIL=${AIRFLOW_WWW_EMAIL}
-  #     - AIRFLOW_WWW_USER=${AIRFLOW_WWW_USER}
-  #     - AIRFLOW_WWW_PASSWORD=${AIRFLOW_WWW_PASSWORD}
-  #     - AIRFLOW_USER=${AIRFLOW_USER}
-  #     # - AIRFLOW__LOGGING__BASE_LOG_FOLDER=/opt/airflow/logs
-  #     # - AIRFLOW__LOGGING__ENCRYPT_S3_LOGS = False
-
-  #     - TZ=Asia/Singapore  
-  #   logging:
-  #     options:
-  #       max-size: 10m
-  #       max-file: "3"
-  #   volumes:
-  #     - ./airflow/dags:/opt/airflow/dags
-  #     - ./airflow/script:/opt/airflow/script
-  #     - ./airflow/logs:/opt/airflow/logs
-  #     - ./airflow/models:/opt/airflow/models
-  #     - ./airflow/requirements.txt:/opt/airflow/requirements.txt
-
-  #   ports:
-  #     - "8081:8080"
-  #   healthcheck:
-  #     test: ['CMD-SHELL', "[ -f /opt/airflow/airflow-webserver.pid ]"]
-  #     interval: 30s
-  #     timeout: 30s
-  #     retries: 3
-  #   networks:
-  #     - api
-
-
-  # scheduler:
-  #   image: apache/airflow:latest
-  #   depends_on:
-  #     webserver:
-  #       condition: service_healthy
-  #   volumes:
-  #     - ./airflow/dags:/opt/airflow/dags
-  #     - ./airflow/logs:/opt/airflow/logs
-  #     - ./airflow/models:/opt/airflow/models
-  #     - ./airflow/requirements.txt:/opt/airflow/requirements.txt
-  #   environment:
-  #     - LOAD_EX=n
-  #     - EXECUTOR=Sequential
-  #     - AIRFLOW__LOGGING__REMOTE_LOGGING=True
-  #     - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=minio_con
-  #     - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://airflow-logs
-  #     - AIRFLOW__LOGGING__DELETE_LOCAL_LOGS=True
-  #     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/airflow
-  #     - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_WEBSERVER}
-  #     - AIRFLOW_USER=${AIRFLOW_USER}
-  #     - TZ=Asia/Singapore  
-
-  #   command: bash -c "python3 -m pip install --upgrade pip && pip install --no-cache-dir -r /opt/airflow/requirements.txt && airflow db migrate && airflow scheduler"
-  #   networks:
-  #     - api
 
 
   redis:
@@ -326,6 +185,13 @@ services:
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
+      DB_HOST: ${HOST_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASS: ${POSTGRES_PASSWORD}
+      DB_PORT: ${POSTGRES_PORT}
+      DB_NAME: ${POSTGRES_DB}
+      DB_SCHEMA: ${POSTGRES_SCHEMA}
+      DBT_PROFILES_DIR: /opt/airflow/dbt/profile
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -396,8 +262,8 @@ services:
           echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
           echo
         fi
-        mkdir -p /sources/logs /sources/dags /sources/plugins
-        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
+        mkdir -p /opt/airflow/logs /opt/airflow/dags /opt/airflow/plugins /opt/airflow/dbt 
+        chown -R "${AIRFLOW_UID}:0" /opt/airflow/{logs,dags,plugins,dbt}
         exec /entrypoint airflow version
     # yamllint enable rule:line-length
     environment:

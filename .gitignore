@@ -7,3 +7,6 @@ IST_old.go
 test.go
 script.txt
 logs
+dbt-env
+profile
+target

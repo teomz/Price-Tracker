@@ -1,0 +1,76 @@
+
+version: 2
+
+models:
+  - name: omnibus_cleaned
+    description: "A cleaned omnibus model"
+    columns:
+      - name: upc
+        description: "Universal Product Code"
+        tests:
+          - not_null
+          - unique
+
+      - name: name
+        description: "Name of the omnibus"
+        tests:
+          - not_null
+
+      - name: price
+        description: "Price of the omnibus"
+        tests:
+          - not_null
+
+      - name: version
+        description: "Standard or DM version"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['DM', 'Standard']
+
+      - name: pagecount
+        description: "Total number of pages"
+        tests:
+          - not_null
+
+      - name: datecreated
+        description: "Creation date (YYYY-MM-DD)"
+        tests:
+          - not_null
+
+      - name: publisher
+        description: "Publisher of the omnibus"
+        tests:
+          - not_null
+
+      - name: imgpath
+        description: "Path to the image file"
+        tests:
+          - not_null
+          - unique
+
+      - name: isturl
+        description: "URL to IST"
+
+      - name: amazonurl
+        description: "URL to Amazon"
+
+      - name: last_updated
+        description: "Last update timestamp"
+        tests:
+         - not_null
+
+      - name: status
+        description: "Hot, Cold, Archive"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Hot', 'Cold']
+
+
+
+sources:
+  - name: public
+    tables:
+      - name: omnibus
+

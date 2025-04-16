@@ -1,0 +1,47 @@
+
+version: 2
+
+models:
+  - name: analytics_amazon
+    description: "top deals for amazon model"
+    columns:
+      - name: name
+        description: "name"
+        tests:
+          - not_null
+          - unique
+
+      - name: latest_sale
+        description: "latest price"
+
+      - name: percent
+        description: "latest price/ msrp"
+
+      - name: url
+        description: "url"
+
+  - name: analytics_ist
+    description: "top deals for ist model"
+    columns:
+      - name: name
+        description: "name"
+        tests:
+          - not_null
+          - unique
+
+      - name: latest_sale
+        description: "latest price"
+
+      - name: percent
+        description: "latest price/ msrp"
+
+      - name: url
+        description: "url"
+      
+
+      
+sources:
+  - name: public
+    tables:
+      - name: sale
+
