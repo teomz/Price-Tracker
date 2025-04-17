@@ -1,5 +1,18 @@
 basePath: /api/v1
 definitions:
+  models.Analytics:
+    properties:
+      date:
+        type: string
+      latest_sale:
+        type: number
+      name:
+        type: string
+      percent:
+        type: number
+      url:
+        type: string
+    type: object
   models.ErrorResponse:
     properties:
       action:
@@ -45,6 +58,18 @@ definitions:
       version:
         description: Standard or DM version
         type: string
+    type: object
+  models.QuerySuccessResponse-models_Analytics:
+    properties:
+      action:
+        type: string
+      values:
+        items:
+          $ref: '#/definitions/models.Analytics'
+        type: array
+    required:
+    - action
+    - values
     type: object
   models.QuerySuccessResponse-models_SaleUrls:
     properties:
@@ -268,6 +293,40 @@ paths:
       summary: Upload a file to MinIO
       tags:
       - minio
+  /postgresql/getAnalytics:
+    get:
+      consumes:
+      - application/json
+      description: Return a table from the PostgreSQL database
+      parameters:
+      - description: User calling the API
+        in: query
+        name: TaskUser
+        required: true
+        type: string
+      - description: the table to query
+        in: query
+        name: Table
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.QuerySuccessResponse-models_Analytics'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: get table
+      tags:
+      - postgres
   /postgresql/getInfoByDate:
     get:
       consumes:

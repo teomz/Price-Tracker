@@ -50,6 +50,7 @@ x-airflow-common:
     - ./airflow/models:/opt/airflow/models
     - ./airflow/requirements.txt:/opt/airflow/requirements.txt
     - ./airflow/dbt:/opt/airflow/dbt
+    - ./airflow/creds:/opt/airflow/creds
 
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
@@ -192,6 +193,10 @@ services:
       DB_NAME: ${POSTGRES_DB}
       DB_SCHEMA: ${POSTGRES_SCHEMA}
       DBT_PROFILES_DIR: /opt/airflow/dbt/profile
+      GOOGLE_FILE: ${GOOGLE_FILE}
+      GOOGLE_AMAZON: ${GOOGLE_AMAZON}
+      GOOGLE_IST: ${GOOGLE_IST}
+
     restart: always
     depends_on:
       <<: *airflow-common-depends-on

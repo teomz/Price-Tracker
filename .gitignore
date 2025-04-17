@@ -10,3 +10,5 @@ logs
 dbt-env
 profile
 target
+package-lock.yml
+creds

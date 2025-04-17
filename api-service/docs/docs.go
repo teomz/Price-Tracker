@@ -198,6 +198,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/postgresql/getAnalytics": {
+            "get": {
+                "description": "Return a table from the PostgreSQL database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "postgres"
+                ],
+                "summary": "get table",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User calling the API",
+                        "name": "TaskUser",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "the table to query",
+                        "name": "Table",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.QuerySuccessResponse-models_Analytics"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/postgresql/getInfoByDate": {
             "get": {
                 "description": "Return an array of upc from the PostgreSQL database filtered by date",
@@ -511,6 +562,26 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "models.Analytics": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "latest_sale": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "percent": {
+                    "type": "number"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "models.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -572,6 +643,24 @@ const docTemplate = `{
                 "version": {
                     "description": "Standard or DM version",
                     "type": "string"
+                }
+            }
+        },
+        "models.QuerySuccessResponse-models_Analytics": {
+            "type": "object",
+            "required": [
+                "action",
+                "values"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "values": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Analytics"
+                    }
                 }
             }
         },

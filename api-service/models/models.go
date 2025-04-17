@@ -79,6 +79,14 @@ type SaleUrls struct {
 	IST    string `json:"isturl"`    // "https://www.instocktrades.com/products/jun247225/flash-by-mark-waid-omnibus-hc-vol-02"
 }
 
+type Analytics struct {
+	Date       time.Time `json:"date"`
+	Name       string    `json:"name"`
+	LatestSale float32   `json:"latest_sale"`
+	Percent    float32   `json:"percent"`
+	URL        string    `json:"url"`
+}
+
 func (o Omnibus) String() string {
 	return fmt.Sprintf(
 		"Omnibus: {UPC: %s, Name: %s, Publisher: %s, Price: $%.2f, Version: %s, PageCount: %d, Released: %s, IST URL: %s, Amazon URL: %s, ImgPath: %s, Last Updated: %s}",
