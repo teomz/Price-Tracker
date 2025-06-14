@@ -3,7 +3,6 @@ package postgresql
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -37,7 +36,7 @@ func uploadInfo(g *gin.Context) {
 	envFile := "../.env"
 	err := utilities.LoadEnvFile(envFile)
 	if err != nil {
-		log.Println("Error occurred while loading .env file.")
+		// log.Println("Error occurred while loading .env file.")
 	}
 
 	// Check if the user is authorized
@@ -83,7 +82,7 @@ func uploadInfo(g *gin.Context) {
 
 	query, values, err := buildInsertQuery(req, use)
 
-	fmt.Println(values)
+	// fmt.Println(values)
 
 	if err != nil {
 		g.JSON(http.StatusBadRequest, models.ErrorResponse{
@@ -198,7 +197,7 @@ func buildInsertQuery(item []map[string]any, platform string) (string, []any, er
 		values := []any{}
 
 		for i, row := range item {
-			fmt.Println(row)
+			// fmt.Println(row)
 			sale := models.Sale{
 				Date:        time.Now(),
 				UPC:         row["upc"].(string),

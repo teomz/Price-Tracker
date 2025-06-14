@@ -29,7 +29,7 @@ ISTID = os.getenv("GOOGLE_IST")
 @dag(
     dag_id="dbt_task_dag",
     start_date=days_ago(1),
-    schedule_interval="0,30 * * * *",  # or "@daily" if you want it scheduled
+    schedule_interval="18,43 * * * *",  # or "@daily" if you want it scheduled
     catchup=False,
     max_active_runs=1,
     tags=["dbt"]

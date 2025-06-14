@@ -1,7 +1,6 @@
 package scraper
 
 import (
-	"fmt"
 	"html"
 	"log"
 	"math"
@@ -79,12 +78,12 @@ func getScrapedInfo(g *gin.Context) {
 			counter++
 			if counter <= worker {
 				// For the first two items, just start them directly
-				log.Print("Start worker for ", upc)
+				// log.Print("Start worker for ", upc)
 				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
 			} else {
 				// Wait for one of the previous workers to finish before starting a new one
 				<-successChan
-				log.Print("Received Success and Starting worker for ", upc)
+				// log.Print("Received Success and Starting worker for ", upc)
 				go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
 			}
 		}
@@ -96,7 +95,7 @@ func getScrapedInfo(g *gin.Context) {
 	go func() {
 
 		for omnibus := range resultChan {
-			log.Println("Goroutine Collection for ", omnibus.Name, " ", omnibus.UPC, " for ", omnibus.Version)
+			// log.Println("Goroutine Collection for ", omnibus.Name, " ", omnibus.UPC, " for ", omnibus.Version)
 			omnibusList = append(omnibusList, omnibus) // Collect results
 			wg.Done()
 		}
@@ -110,7 +109,7 @@ func getScrapedInfo(g *gin.Context) {
 	close(resultChan) // All goroutines finished, close the channel
 	close(successChan)
 
-	fmt.Println("Scarping Done")
+	// fmt.Println("Scarping Done")
 
 	// If scraping is successful, return the data
 	g.JSON(http.StatusOK, models.SuccessScraperResponse{
@@ -130,12 +129,12 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 	)
 
 	c.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting", r.URL)
+		// log.Println("Visiting", r.URL)
 	})
 
 	// This will run after a page is visited and the source is fetched
 	c.OnResponse(func(r *colly.Response) {
-		log.Println("Successfully fetched:", r.Request.URL)
+		// log.Println("Successfully fetched:", r.Request.URL)
 	})
 
 	var substring string
@@ -144,7 +143,7 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 		htmlText := e.Text
 		// Check if we already found the first match
 		if !foundFirst {
-			log.Println("Found Link in Amazon")
+			// log.Println("Found Link in Amazon")
 			// Extract href attribute value
 			href := e.Attr("href")
 			parts := strings.Split(href, "/ref=")
@@ -160,7 +159,7 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 			if omnibus, exists := omnibusData[upc]; exists {
 				omnibus.AmazonUrl = amazonurl
 				resultChan <- *omnibus // Send completed Omnibus data
-				log.Println("Found Link: Send result AmazonURL ", omnibus.AmazonUrl, " for ", upc)
+				// log.Println("Found Link: Send result AmazonURL ", omnibus.AmazonUrl, " for ", upc)
 			}
 			mutex.Unlock()
 			foundFirst = true
@@ -185,7 +184,7 @@ func scrapeAmazonLink(source string, upc string, resultChan chan models.Omnibus,
 		if retryCount <= maxRetries {
 			randomSleepDuration := time.Duration(rand.Intn(6)+5) * time.Second
 			time.Sleep(randomSleepDuration)
-			log.Printf("Retrying %s (attempt %d/%d)", source, retryCount, maxRetries)
+			// log.Printf("Retrying %s (attempt %d/%d)", source, retryCount, maxRetries)
 			go scrapeAmazonLink("https://www.amazon.sg/s?k="+upc, upc, resultChan, successChan)
 			haveRetried = true
 		} else {
@@ -253,7 +252,7 @@ func scrapeIST(source string, upcChan chan string, resultChan chan models.Omnibu
 			((strings.Contains(name, "Teenage Mutant Ninja Turtles") || strings.Contains(name, "TMNT") || strings.Contains(name, "Daredevil")) && strings.Contains(name, "HC")) {
 			wg.Add(1)
 			link := e.Request.AbsoluteURL(e.ChildAttr("a", "href"))
-			log.Println(link)
+			// log.Println(link)
 			go scrapeISTInfo(link, upcChan, resultChan)
 		}
 	})
@@ -273,7 +272,7 @@ func scrapeIST(source string, upcChan chan string, resultChan chan models.Omnibu
 		pageParam := parsedURL.Query().Get("pg")
 		pageNumber, _ := strconv.Atoi(pageParam)
 		if pageNumber > pgcount {
-			fmt.Println(pgcount)
+			// fmt.Println(pgcount)
 			pgcount++
 			c.Visit(link) // Visit the next page
 		}

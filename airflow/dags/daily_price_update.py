@@ -56,7 +56,7 @@ def split_list(data: List[any], chunk_size: int) -> List[List[any]]:
 
 
 
-@dag(schedule_interval="0,30 * * * *", start_date=days_ago(1), catchup=False, max_active_runs=1, tags=['price'])
+@dag(schedule_interval="18,43 * * * *", start_date=days_ago(1), catchup=False, max_active_runs=1, tags=['price'])
 def daily_price_update():
 
     chunk_size = 1000000 

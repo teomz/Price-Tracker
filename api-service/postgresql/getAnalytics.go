@@ -3,7 +3,6 @@ package postgresql
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -36,7 +35,7 @@ func getAnalytics(g *gin.Context) {
 	envFile := "../.env"
 	err := utilities.LoadEnvFile(envFile)
 	if err != nil {
-		log.Println("Error occurred while loading .env file.")
+		// log.Println("Error occurred while loading .env file.")
 	}
 
 	// Check if the user is authorized

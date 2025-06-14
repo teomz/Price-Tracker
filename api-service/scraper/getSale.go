@@ -192,7 +192,7 @@ func getScrapedSale(g *gin.Context) {
 }
 
 func getAmazonSale(url string, resultChan chan models.Sale, upc string, successChan chan bool) {
-	log.Println("Scraping Amazon link:", url)
+	// log.Println("Scraping Amazon link:", url)
 
 	var record models.Sale
 	foundFirst := false
@@ -211,13 +211,13 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 	)
 
 	c.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting", r.URL, " ", upc)
+		// log.Println("Visiting", r.URL, " ", upc)
 	})
 
 	// This will run after a page is visited and the source is fetched
 	c.OnResponse(func(r *colly.Response) {
-		log.Println("Successfully fetched:", r.Request.URL, " ", upc)
-		log.Println(r.StatusCode)
+		// log.Println("Successfully fetched:", r.Request.URL, " ", upc)
+		// log.Println(r.StatusCode)
 	})
 
 	c.OnHTML("span.slot-price", func(e *colly.HTMLElement) {
@@ -227,7 +227,7 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 			// priceFraction := e.ChildText("span.a-price-fraction")
 			// // Construct the full price
 			// price := fmt.Sprintf("%s.%s", strings.Replace(priceWhole, ".", "", 1), strings.Replace(priceFraction, ".", "", 1))
-			log.Printf("Price Found for %s : %s", upc, price)
+			// log.Printf("Price Found for %s : %s", upc, price)
 			sale, err := strconv.ParseFloat(price, 32)
 			if err != nil {
 				record.Sale = float32(-1)
@@ -268,7 +268,7 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 	c.OnHTML("title", func(e *colly.HTMLElement) {
 		titleText := e.Text
 		if strings.Contains(titleText, "Server Busy") {
-			log.Println("Detected 'Server Busy' page. Retrying...")
+			// log.Println("Detected 'Server Busy' page. Retrying...")
 
 			saleRetry.Lock()
 			retryCount, exists := saleRetryCheck[upc]
@@ -284,9 +284,11 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 			if retryCount <= maxRetries {
 				randomSleepDuration := time.Duration(rand.Intn(6)+5) * time.Second
 				time.Sleep(randomSleepDuration)
-				log.Printf("Retrying %s (attempt %d/%d)", upc, retryCount, maxRetries)
+				// log.Printf("Retrying %s (attempt %d/%d)", upc, retryCount, maxRetries)
 				haveRetried = true
 				go getAmazonSale(url, resultChan, upc, successChan)
+			} else {
+				log.Printf("Retrying %s (attempt %d/%d) %s", upc, retryCount, maxRetries, url)
 			}
 		}
 	})
@@ -316,7 +318,7 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 	c.Visit(url)
 
 	if !haveRetried {
-		log.Printf("%s: Sending Price $%f for %s ", record.Platform, record.Sale, record.UPC)
+		// log.Printf("%s: Sending Price $%f for %s ", record.Platform, record.Sale, record.UPC)
 		resultChan <- record
 		successChan <- true
 	}
@@ -325,7 +327,7 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 
 func getISTSale(url string, resultChan chan models.Sale, upc string) {
 
-	log.Println("Scraping IST link")
+	// log.Println("Scraping IST link")
 
 	var record models.Sale
 
@@ -341,13 +343,13 @@ func getISTSale(url string, resultChan chan models.Sale, upc string) {
 	)
 
 	c.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting", r.URL, " ", upc)
+		// log.Println("Visiting", r.URL, " ", upc)
 	})
 
 	// This will run after a page is visited and the source is fetched
 	c.OnResponse(func(r *colly.Response) {
-		log.Println("Successfully fetched:", r.Request.URL)
-		log.Println(r.StatusCode)
+		// log.Println("Successfully fetched:", r.Request.URL)
+		// log.Println(r.StatusCode)
 	})
 
 	c.OnHTML("div.pricing", func(e *colly.HTMLElement) {
@@ -376,7 +378,7 @@ func getISTSale(url string, resultChan chan models.Sale, upc string) {
 
 	c.Visit(url)
 
-	log.Printf("%s: Sending Price $%f for %s ", record.Platform, record.Sale, record.UPC)
+	// log.Printf("%s: Sending Price $%f for %s ", record.Platform, record.Sale, record.UPC)
 	resultChan <- record
 
 }
