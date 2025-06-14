@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
 	"os"
@@ -57,7 +58,8 @@ func getScrapedSale(g *gin.Context) {
 		return
 	}
 
-	worker := 2
+	base := 4.0
+	worker := int(math.Pow(base, 3) / 2)
 	urlChan := make(chan models.SaleUrls, worker)
 	resultChan := make(chan models.Sale, worker*2) // Completed Sale structs
 	amazonChan := make(chan models.SaleUrls, worker)
@@ -194,7 +196,7 @@ func getAmazonSale(url string, resultChan chan models.Sale, upc string, successC
 
 	var record models.Sale
 	foundFirst := false
-	maxRetries := 50
+	maxRetries := 50 * 2
 	haveRetried := false
 
 	record.Date = time.Now()

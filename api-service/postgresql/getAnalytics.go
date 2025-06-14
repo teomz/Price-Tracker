@@ -88,7 +88,8 @@ func getAnalytics(g *gin.Context) {
 
 		for rows.Next() {
 			var analyticsRow models.Analytics
-			if err := rows.Scan(&analyticsRow.Date, &analyticsRow.Name, &analyticsRow.LatestSale, &analyticsRow.Percent, &analyticsRow.URL); err != nil {
+			if err := rows.Scan(&analyticsRow.Date, &analyticsRow.Name, &analyticsRow.LatestSale, &analyticsRow.Percent, &analyticsRow.Discount_five_Sale,
+				&analyticsRow.Discount_five_Percent, &analyticsRow.Discount_ten_Sale, &analyticsRow.Discount_ten_Percent, &analyticsRow.URL); err != nil {
 				g.JSON(http.StatusInternalServerError, models.ErrorResponse{
 					Action: action,
 					Error:  "Error scanning analyticsRow",

@@ -565,6 +565,18 @@ const docTemplate = `{
         "models.Analytics": {
             "type": "object",
             "properties": {
+                "90%_percent": {
+                    "type": "number"
+                },
+                "90%_sale": {
+                    "type": "number"
+                },
+                "95%_percent": {
+                    "type": "number"
+                },
+                "95%_sale": {
+                    "type": "number"
+                },
                 "date": {
                     "type": "string"
                 },

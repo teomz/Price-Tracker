@@ -56,7 +56,7 @@ def split_list(data: List[any], chunk_size: int) -> List[List[any]]:
 
 
 
-@dag(schedule_interval="0 */4 * * *", start_date=days_ago(1), catchup=False, max_active_runs=1)
+@dag(schedule_interval="0,30 * * * *", start_date=days_ago(1), catchup=False, max_active_runs=1, tags=['price'])
 def daily_price_update():
 
     chunk_size = 1000000 
@@ -96,7 +96,7 @@ def daily_price_update():
         return response.json()['values']
 
     @task()
-    def cleanUnvalidLink_Temp(saleList: List[SaleList]) -> List[SaleList]:
+    def cleanUnvalidLink(saleList: List[SaleList]) -> List[SaleList]:
         pattern = "gp/help/customer/display"
         for sale in saleList:
             if re.search(pattern, sale['amazonurl']):
@@ -156,7 +156,7 @@ def daily_price_update():
 
     for i in ["DC", "Marvel", "Image", "IDW", "Titan", "Boom!", "Dark Horse"]:
         saleList = getSaleforPlatform(i)
-        saleList = cleanUnvalidLink_Temp(saleList)
+        saleList = cleanUnvalidLink(saleList)
         saleList = getScrapedSale(saleList)
         fxrate = get_today_fx_rate()
         saleList = transformSale(saleList, fxrate)

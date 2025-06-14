@@ -1,22 +1,16 @@
 # Price Tracker Website
 
-This is a microservices-based price tracking website that collects and displays product prices. The project includes a Go backend API for web scraping, a TypeScript-based frontend, and a set of supporting services for scheduling, storing, and processing the data.
+This microservices-based price tracking website collects and monitors product prices across various platforms. The project features a Go-based backend API responsible for web scraping, supported by a suite of services for orchestration, data storage, and processing.
+
+It follows an ELT (Extract, Load, Transform) pipeline: data is extracted using the scraper API, loaded into PostgreSQL, and transformed using DBT for analysis and reporting.
 
 ## Tech Stack
 - **Go (Golang)**: Backend service and web scraping API
-- **TypeScript (React)**: Frontend application
 - **Docker**: For containerizing services
 - **Airflow**: Scheduling and managing scraping tasks
 - **PostgreSQL**: Database for storing scraped price data
-- **DBT (optional)**: Data quality and transformation tool (to be implemented later)
+- **DBT**: Data quality and transformation tool 
 - **MinIO**: Open-source object storage server for image/objects (Simulate S3 server)
-
-## Prerequisites
-- Docker and Docker Compose
-- Go 1.18+ (for API service development)
-- Node.js 16+ (for frontend development)
-- Python 3.7+ (for Airflow)
-
 
 ---
 
@@ -81,11 +75,4 @@ price-tracker/
 ## **Future Enhancements**
 - Add authentication to the API.
 - Integrate monitoring tools like Prometheus and Grafana.
-
-
-Pipeline Flow
-Scraper API → Fetch JSON data.
-Perform transformations & convert to Parquet.
-Save Parquet to MinIO & load structured data into PostgreSQL.
-Add Logging & Alerts for Failures
 

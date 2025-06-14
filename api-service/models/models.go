@@ -80,11 +80,15 @@ type SaleUrls struct {
 }
 
 type Analytics struct {
-	Date       time.Time `json:"date"`
-	Name       string    `json:"name"`
-	LatestSale float32   `json:"latest_sale"`
-	Percent    float32   `json:"percent"`
-	URL        string    `json:"url"`
+	Date                  time.Time `json:"date"`
+	Name                  string    `json:"name"`
+	LatestSale            float32   `json:"latest_sale"`
+	Percent               float32   `json:"percent"`
+	Discount_five_Sale    float32   `json:"95%_sale"`
+	Discount_five_Percent float32   `json:"95%_percent"`
+	Discount_ten_Sale     float32   `json:"90%_sale"`
+	Discount_ten_Percent  float32   `json:"90%_percent"`
+	URL                   string    `json:"url"`
 }
 
 func (o Omnibus) String() string {

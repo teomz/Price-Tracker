@@ -29,7 +29,7 @@ ISTID = os.getenv("GOOGLE_IST")
 @dag(
     dag_id="dbt_task_dag",
     start_date=days_ago(1),
-    schedule_interval="25 */4 * * *",  # or "@daily" if you want it scheduled
+    schedule_interval="0,30 * * * *",  # or "@daily" if you want it scheduled
     catchup=False,
     max_active_runs=1,
     tags=["dbt"]
@@ -41,10 +41,10 @@ def dbt_task():
     external_dag_id='daily_price_update',
     external_task_id=None,
     allowed_states=['success'],
-    execution_delta=timedelta(minutes=25),
+    execution_delta=timedelta(minutes=0),
     mode='poke',  # or 'reschedule' if you want to free up resources
-    poke_interval=60,  # check every 5 minutes
-    timeout=3600,       # give up after 1 hour (optional)
+    poke_interval=300,  # check every 5 minutes
+    timeout=2400,       # give up after 1 hour 30 mins (optional)
     )
 
     run_dbt = BashOperator(
@@ -72,6 +72,8 @@ def dbt_task():
         data = response.json()['values']
 
         df = pd.DataFrame(data)
+        df['name'] = df['name'].astype(str).str.ljust(50)
+
         logging.info("DataFrame created with shape: %s", df.shape)
         logging.debug("DataFrame content:\n%s", df.head())
 

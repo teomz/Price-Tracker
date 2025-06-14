@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -46,7 +47,8 @@ func getScrapedInfo(g *gin.Context) {
 	// platform := g.DefaultQuery("Platform", "default_platform")
 	// var err error
 	var omnibusList []models.Omnibus // Store all completed JSON objects
-	worker := 4
+	base := 4.0
+	worker := int(math.Pow(base, 3) / 2)
 
 	if err := utilities.CheckUser(g, os.Getenv("AIRFLOW_USER")); err != nil {
 		g.JSON(http.StatusBadRequest, models.ErrorResponse{
